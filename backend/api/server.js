@@ -1,7 +1,11 @@
 "use strict";
 
 // 🛠️ Đọc file .env nằm ở thư mục fetch kề bên
-require("dotenv").config({ path: "../fetch/.env" }); 
+// require("dotenv").config({ path: "../fetch/.env" }); 
+// Chỉ đọc file vật lý nếu chạy ở máy cá nhân (Local), chạy trên Render sẽ bỏ qua dòng này
+if (process.env.NODE_ENV !== "production") {
+  require("dotenv").config({ path: require("path").join(__dirname, "../../fetch/.env") });
+}
 
 const express = require("express");
 const cors = require("cors");
