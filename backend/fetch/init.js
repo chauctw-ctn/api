@@ -8,7 +8,6 @@ async function initDatabase() {
   console.log("🛠 Khởi động quá trình dọn sạch và làm mới Database trên PostgreSQL...");
 
   try {
-    // 1. Xóa các bảng cũ (Thêm CASCADE để tự động gỡ các ràng buộc liên quan)
     await db.query("DROP TABLE IF EXISTS alert_thresholds CASCADE");
     await db.query("DROP TABLE IF EXISTS logger_tag_mappings CASCADE");
     await db.query("DROP TABLE IF EXISTS logger_stations CASCADE");
@@ -19,7 +18,7 @@ async function initDatabase() {
 
     console.log("🗑 Đã xóa sạch cấu trúc dữ liệu và các bảng cũ.");
 
-    // 2. Tạo bảng TRẠM HIỂN THỊ
+    // Tạo bảng TRẠM HIỂN THỊ
     await db.query(`
       CREATE TABLE logger_stations (
         station_id VARCHAR(255) PRIMARY KEY,
@@ -30,7 +29,7 @@ async function initDatabase() {
       )
     `);
 
-    // 3. Tạo bảng MAPPING TAG
+    // Tạo bảng MAPPING TAG
     await db.query(`
       CREATE TABLE logger_tag_mappings (
         id SERIAL PRIMARY KEY,
@@ -43,30 +42,31 @@ async function initDatabase() {
       )
     `);
 
-    // 4. Tạo bảng DỮ LIỆU GẦN NHẤT    
+    // Tạo bảng DỮ LIỆU GẦN NHẤT    
     await db.query(`
       CREATE TABLE logger_latest (
         logger_id VARCHAR(255) NOT NULL,
         tag_key VARCHAR(100) NOT NULL,
         data_ts VARCHAR(50) NOT NULL,
         value DOUBLE PRECISION,
-        saved_ts VARCHAR(50) DEFAULT TO_CHAR(NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh', 'YYYY-MM-DD HH24:MI:SS'),
+        current_ts VARCHAR(50) NOT NULL, 
         PRIMARY KEY (logger_id, tag_key)
       )
     `);
 
-    // 5. Tạo bảng DỮ LIỆU LỊCH SỬ
+    // 🛠️ SỬA LỖI TẠI ĐÂY: Thêm cột data_save vào bảng DỮ LIỆU LỊCH SỬ
     await db.query(`
       CREATE TABLE logger_readings (
         id SERIAL PRIMARY KEY,
         logger_id VARCHAR(255) NOT NULL,
         tag_key VARCHAR(100) NOT NULL,
         data_ts VARCHAR(50) NOT NULL,
+        data_save VARCHAR(50) NOT NULL,
         value DOUBLE PRECISION
       )
     `);
 
-    // 6. Cấu hình ngưỡng Min/Max
+    // Cấu hình ngưỡng Min/Max
     await db.query(`
       CREATE TABLE alert_thresholds (
         id SERIAL PRIMARY KEY,
@@ -80,7 +80,7 @@ async function initDatabase() {
       )
     `);
 
-    // 7. Cấu hình Telegram
+    // Cấu hình Telegram
     await db.query(`
       CREATE TABLE telegram_configs (
         id SERIAL PRIMARY KEY,
@@ -91,7 +91,7 @@ async function initDatabase() {
     `);
     await db.query("INSERT INTO telegram_configs (id, bot_token, chat_id, enabled) VALUES (1, '', '', 0)");
 
-    // 8. Quản lý tài khoản User
+    // Quản lý tài khoản User
     await db.query(`
       CREATE TABLE users (
         id SERIAL PRIMARY KEY,
@@ -106,19 +106,19 @@ async function initDatabase() {
     // ==================== KHỞI TẠO CHỈ MỤC (INDEXES) ====================
     await db.query(`
       CREATE INDEX IF NOT EXISTS idx_logger_latest_lookup 
-      ON logger_latest (logger_id, tag_key, saved_ts);
+      ON logger_latest (logger_id, tag_key, current_ts);
     `);
 
+    // 🛠️ SỬA LỖI TẠI ĐÂY: Cập nhật chỉ mục chứa cả data_save để tăng tốc tìm kiếm lịch sử chu kỳ
     await db.query(`
       CREATE INDEX IF NOT EXISTS idx_history_lookup 
-      ON logger_readings (logger_id, tag_key, data_ts);
+      ON logger_readings (logger_id, tag_key, data_ts, data_save);
     `);
 
     console.log("✅ Cấu trúc DB Postgres hoàn toàn trống rỗng và Chỉ mục đã khởi tạo thành công!");
   } catch (err) {
     console.error("❌ Lỗi khởi tạo Database:", err.message);
   } finally {
-    // Đóng toàn bộ pool kết nối an toàn
     await db.end();
     console.log("🏁 Đã ngắt kết nối an toàn.");
   }

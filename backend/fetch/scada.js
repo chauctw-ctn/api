@@ -15,7 +15,6 @@ const DEFAULT_CONFIG = {
   maxRetries: Number(process.env.SCADA_MAX_RETRIES) || 3,
   retryDelayMs: Number(process.env.SCADA_RETRY_DELAY_MS) || 5000,
   source: "scada",
-  
   FETCH_INTERVAL_SECONDS: Number(process.env.SCADA_FETCH_INTERVAL_SECONDS) || 60,  
   SAVE_DB_INTERVAL_MINUTES: Number(process.env.SCADA_SAVE_DB_INTERVAL_MINUTES) || 5
 };
@@ -33,10 +32,7 @@ const cnlMapping = {
 const db = openDb();
 let scadaHistoryQueue = [];
 
-function buildStationId(source, rawId) { 
-  return `${source}_${String(rawId).toLowerCase()}`; 
-}
-
+function buildStationId(source, rawId) { return `${source}_${String(rawId).toLowerCase()}`; }
 function mapCnlToStationAndParameter(cnlNum) {
   const mapped = cnlMapping[cnlNum];
   if (!mapped) return { station: null, parameter: null };
@@ -44,18 +40,12 @@ function mapCnlToStationAndParameter(cnlNum) {
 }
 
 function createHttpClient(config) {
-  return axios.create({
-    timeout: config.timeoutMs,
-    maxRedirects: 5,
-    validateStatus: (s) => s < 400,
-    headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" }
-  });
+  return axios.create({ timeout: config.timeoutMs, maxRedirects: 5, headers: { "User-Agent": "Mozilla/5.0" } });
 }
 
 function collectCookies(existing, next) {
   const combined = [...existing, ...next];
-  const cookieSet = new Set(combined.map((c) => c.split(";")[0]));
-  return Array.from(cookieSet).join("; ");
+  return Array.from(new Set(combined.map((c) => c.split(";")[0]))).join("; ");
 }
 
 function parseScadaValue(textValue) {
@@ -64,180 +54,102 @@ function parseScadaValue(textValue) {
   if (cleaned === "" || cleaned === "-" || cleaned.toLowerCase() === "nan") return null;
   if (cleaned.includes(".") && cleaned.includes(",")) cleaned = cleaned.replace(/\./g, "").replace(/,/g, ".");
   else if (cleaned.includes(",")) cleaned = cleaned.replace(/,/g, ".");
-  const num = Number(cleaned);
-  return Number.isNaN(num) ? null : num;
+  const num = Number(cleaned); return Number.isNaN(num) ? null : num;
 }
 
 async function loginScada(config) {
-  const client = createHttpClient(config);
-  const loginPage = await client.get(config.loginUrl);
-  const initialCookies = loginPage.headers["set-cookie"] || [];
-  const initialHeader = collectCookies([], initialCookies);
-
+  const client = createHttpClient(config); const loginPage = await client.get(config.loginUrl);
+  const initialCookies = loginPage.headers["set-cookie"] || []; const initialHeader = collectCookies([], initialCookies);
   const $ = cheerio.load(loginPage.data);
-  const viewState = $("input[name='__VIEWSTATE']").val();
-  const eventValidation = $("input[name='__EVENTVALIDATION']").val();
-  const viewStateGen = $("input[name='__VIEWSTATEGENERATOR']").val();
-
-  if (!viewState) throw new Error("SCADA login failed: missing __VIEWSTATE");
-
   const loginData = new URLSearchParams({
-    __VIEWSTATE: viewState, __VIEWSTATEGENERATOR: viewStateGen || "", __EVENTVALIDATION: eventValidation || "",
-    txtUsername: config.username, txtPassword: config.password, btnLogin: "Login"
+    __VIEWSTATE: $("input[name='__VIEWSTATE']").val(), __VIEWSTATEGENERATOR: $("input[name='__VIEWSTATEGENERATOR']").val() || "",
+    __EVENTVALIDATION: $("input[name='__EVENTVALIDATION']").val() || "", txtUsername: config.username, txtPassword: config.password, btnLogin: "Login"
   });
-
-  const loginResponse = await client.post(config.loginUrl, loginData.toString(), {
-    headers: { "Content-Type": "application/x-www-form-urlencoded", Cookie: initialHeader, Referer: config.loginUrl }
-  });
-
+  const loginResponse = await client.post(config.loginUrl, loginData.toString(), { headers: { "Content-Type": "application/x-www-form-urlencoded", Cookie: initialHeader, Referer: config.loginUrl } });
   return { client, sessionCookie: collectCookies(initialCookies, loginResponse.headers["set-cookie"] || []) };
 }
 
-async function warmUpViewCache(config, client, sessionCookie) {
-  try { await client.get(`${config.baseUrl}/Scada/View.aspx?viewID=${config.viewId}`, { headers: { Cookie: sessionCookie } }); } catch (_) {}
-}
-
-function getFormattedTimestamp() {
+// Hàm lấy thời gian đo / thời gian hiện hành làm tròn giây về 00
+function getFormattedTimestampRounded() {
   const now = new Date();
   const pad = (v) => String(v).padStart(2, "0");
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:00`;
 }
 
 function getRounded5MinTimestamp() {
-  const now = new Date();
-  const minutes = now.getMinutes();
-  const roundedMinutes = Math.floor(minutes / 5) * 5;
+  const now = new Date(); const minutes = now.getMinutes(); const roundedMinutes = Math.floor(minutes / 5) * 5;
   const pad = (v) => String(v).padStart(2, "0");
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(roundedMinutes)}:00`;
 }
 
-// ------------------------------------------------------------------
-// CHU KỲ 1: FETCH DỮ LIỆU SCADA MỖI 60 GIÂY -> UPDATE LATEST
-// ------------------------------------------------------------------
 async function fetchScadaData() {
-  const config = DEFAULT_CONFIG;
-  const source = config.source;
-
+  const config = DEFAULT_CONFIG; const source = config.source;
   const { client, sessionCookie } = await loginScada(config);
-  await warmUpViewCache(config, client, sessionCookie);
-
-  let rawData = [];
-  const timestamp = Date.now();
+  let rawData = []; const timestamp = Date.now();
   const apiUrl = `${config.baseUrl}/Scada/ClientApiSvc.svc/GetCurCnlDataExt`;
 
   try {
-    // Luồng A: Thử gọi API dựa trên ViewID (Mặc định là 16)
-    const response = await client.get(apiUrl, {
-      params: { cnlNums: '', viewIDs: '', viewID: config.viewId, _: timestamp },
-      headers: { 'Cookie': sessionCookie, 'Referer': `${config.baseUrl}/Scada/View.aspx` }
-    });
-    
-    if (response.data && response.data.d) {
-      const parsedRes = JSON.parse(response.data.d);
-      if (parsedRes.Success) rawData = parsedRes.Data;
-    }
+    const response = await client.get(apiUrl, { params: { cnlNums: '', viewIDs: '', viewID: config.viewId, _: timestamp }, headers: { 'Cookie': sessionCookie } });
+    if (response.data && response.data.d) { const parsedRes = JSON.parse(response.data.d); if (parsedRes.Success) rawData = parsedRes.Data; }
   } catch (err) {
-    console.log("⚠️ [SCADA API] Gọi API theo ViewID thất bại, thử sang luồng Channel-based...");
-    
-    // Luồng B Fallback: Gọi API trực tiếp bằng danh sách mảng số kênh (ChannelNums)
     const channelNums = Object.keys(cnlMapping).map(k => parseInt(k, 10));
-    const response = await client.get(apiUrl, {
-      params: { cnlNums: JSON.stringify(channelNums), viewIDs: '[]', _: timestamp },
-      headers: { 'Cookie': sessionCookie, 'Referer': `${config.baseUrl}/Scada/View.aspx` }
-    });
-
-    if (response.data && response.data.d) {
-      const parsedRes = JSON.parse(response.data.d);
-      if (parsedRes.Success) rawData = parsedRes.Data;
-    }
+    const response = await client.get(apiUrl, { params: { cnlNums: JSON.stringify(channelNums), viewIDs: '[]', _: timestamp }, headers: { 'Cookie': sessionCookie } });
+    if (response.data && response.data.d) { const parsedRes = JSON.parse(response.data.d); if (parsedRes.Success) rawData = parsedRes.Data; }
   }
 
   if (!rawData || rawData.length === 0) return;
 
-  const currentTs = getFormattedTimestamp();
+  const currentFetchTs = getFormattedTimestampRounded(); // 🛠️ SCADA lấy mốc quét hiện hành làm tròn :00 cho cả 2 trường data_ts và current_ts
+  let dbClient;
 
-  for (const item of rawData) {
-    const { station, parameter } = mapCnlToStationAndParameter(item.CnlNum);
-    if (!station || !parameter) continue;
+  try {
+    dbClient = await db.connect();
+    for (const item of rawData) {
+      const { station, parameter } = mapCnlToStationAndParameter(item.CnlNum);
+      if (!station || !parameter) continue;
 
-    const rawId = String(station).toLowerCase();
-    const stationId = buildStationId(source, rawId);
-    const parsedValue = item.Text ? parseScadaValue(item.Text) : null;
-    if (parsedValue === null) continue;
+      const stationId = buildStationId(source, String(station).toLowerCase());
+      const parsedValue = item.Text ? parseScadaValue(item.Text) : null;
+      if (parsedValue === null) continue;
 
-    // Đẩy dữ liệu sạch vào mảng Queue lịch sử (Không lo bị đè)
-    scadaHistoryQueue.push({ logger_id: stationId, tag_key: parameter, value: parsedValue });
+      scadaHistoryQueue.push({ logger_id: stationId, tag_key: parameter, data_ts: currentFetchTs, value: parsedValue });
 
-    try {
-      const queryText = `
-        INSERT INTO logger_latest (logger_id, tag_key, data_ts, value)
-        VALUES ($1, $2, $3, $4)
-        ON CONFLICT (logger_id, tag_key) 
-        DO UPDATE SET data_ts = EXCLUDED.data_ts, value = EXCLUDED.value, saved_ts = TO_CHAR(NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh', 'YYYY-MM-DD HH24:MI:SS');
-      `;
-      await db.query(queryText, [stationId, parameter, currentTs, parsedValue]);
-    } catch (err) {
-      console.error("[SCADA] Lỗi cập nhật logger_latest:", err.message);
+      try {
+        const queryLatest = `
+          INSERT INTO logger_latest (logger_id, tag_key, data_ts, value, current_ts)
+          VALUES ($1, $2, $3, $4, $5)
+          ON CONFLICT (logger_id, tag_key) 
+          DO UPDATE SET data_ts = EXCLUDED.data_ts, value = EXCLUDED.value, current_ts = EXCLUDED.current_ts;
+        `;
+        await dbClient.query(queryLatest, [stationId, parameter, currentFetchTs, parsedValue, currentFetchTs]);
+      } catch (err) { console.error("[SCADA] Lỗi logger_latest:", err.message); }
     }
-  }
+  } catch (err) { console.error("❌ [SCADA][DB] Lỗi kết nối:", err.message); } 
+  finally { if (dbClient) dbClient.release(); }
 }
 
-// ------------------------------------------------------------------
-// KHỞI CHẠY CHU KỲ KIỂM SOÁT RETRY LOGIC AN TOÀN
-// ------------------------------------------------------------------
 let inFlight = false;
 setInterval(async () => {
-  if (inFlight) return;
-  inFlight = true;
-  console.log(`\n[SCADA][FETCH] Khởi động quét hệ thống nhà máy (${DEFAULT_CONFIG.FETCH_INTERVAL_SECONDS}s)...`);
-
-  let success = false;
+  if (inFlight) return; inFlight = true;
   for (let attempt = 1; attempt <= DEFAULT_CONFIG.maxRetries; attempt++) {
-    try {
-      await fetchScadaData();
-      success = true;
-      break;
-    } catch (e) {
-      console.error(`❌ [SCADA] Lần thử ${attempt}/${DEFAULT_CONFIG.maxRetries} thất bại:`, e.message);
-      if (attempt < DEFAULT_CONFIG.maxRetries) {
-        await new Promise(r => setTimeout(r, DEFAULT_CONFIG.retryDelayMs));
-      }
-    }
+    try { await fetchScadaData(); break; } catch (e) { if (attempt < DEFAULT_CONFIG.maxRetries) await new Promise(r => setTimeout(r, DEFAULT_CONFIG.retryDelayMs)); }
   }
   inFlight = false;
 }, DEFAULT_CONFIG.FETCH_INTERVAL_SECONDS * 1000);
 
-// ------------------------------------------------------------------
-// CHU KỲ 2: LƯU BATCH LỊCH SỬ XUỐNG POSTGRES MỖI 5 PHÚT
-// ------------------------------------------------------------------
 setInterval(async () => {
   if (scadaHistoryQueue.length === 0) return;
-
-  const cachedItems = [...scadaHistoryQueue];
-  scadaHistoryQueue = [];
-
+  const cachedItems = [...scadaHistoryQueue]; scadaHistoryQueue = [];
   const serverSavedTs = getRounded5MinTimestamp();
-  console.log(`\n--- [SCADA][DB CHU KỲ ${DEFAULT_CONFIG.SAVE_DB_INTERVAL_MINUTES} PHÚT] Ghi Batch ${cachedItems.length} records -> Postgres. Mốc: ${serverSavedTs} ---`);
 
   const client = await db.connect();
   try {
     await client.query("BEGIN");
-    const insertText = `INSERT INTO logger_readings (logger_id, tag_key, data_ts, value) VALUES ($1, $2, $3, $4)`;
-    
-    for (const item of cachedItems) {
-      await client.query(insertText, [item.logger_id, item.tag_key, serverSavedTs, item.value]);
-    }
+    const insertText = `INSERT INTO logger_readings (logger_id, tag_key, data_ts, data_save, value) VALUES ($1, $2, $3, $4, $5)`;
+    for (const item of cachedItems) { await client.query(insertText, [item.logger_id, item.tag_key, item.data_ts || serverSavedTs, serverSavedTs, item.value]); }
     await client.query("COMMIT");
-    console.log("✅ [SCADA][DB] Đã lưu lịch sử thành công.");
-  } catch (err) {
-    await client.query("ROLLBACK");
-    console.error("❌ [SCADA][DB] Lỗi khi ghi Batch lịch sử:", err.message);
-  } finally {
-    client.release();
-  }
-}, DEFAULT_CONFIG.SAVE_DB_INTERVAL_MINUTES * 60 * 1000); // Đã đồng bộ cấu hình chạy theo phút
+  } catch (err) { await client.query("ROLLBACK"); } 
+  finally { client.release(); }
+}, DEFAULT_CONFIG.SAVE_DB_INTERVAL_MINUTES * 60 * 1000);
 
-module.exports = { 
-  fetchScadaData,
-  fetchAndPrintScadaData: fetchScadaData
-};
+module.exports = { fetchScadaData };
