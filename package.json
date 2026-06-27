@@ -1,15 +1,19 @@
 {
-  "name": "iot-logger-gateway",
+  "name": "my-monorepo-project",
   "version": "1.0.0",
-  "description": "Hệ thống quản lý dữ liệu trạm IoT",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
-  "dependencies": {
-    "express": "^4.19.2",
-    "cors": "^2.8.5",
-    "pg": "^8.11.5",
-    "dotenv": "^16.4.5"
+  "private": true,
+  "workspaces": [
+    "apps/api",
+    "apps/fetch"
+  ],
+"scripts": {
+  "dev:api": "npm run dev -w api",
+  "dev:fetch": "npm run dev -w fetch",
+  "start:api": "npm start -w api",
+  "start:fetch": "npm start -w fetch",
+  "dev": "node app.js"
+},
+  "devDependencies": {
+    "concurrently": "^8.2.2"
   }
 }
