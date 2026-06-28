@@ -1,6 +1,7 @@
 "use strict";
 const mqtt = require("mqtt");
 const { openDb } = require("../config/connection");
+const { checkAndAlert } = require("./alertService");
 
 const DEFAULT_CONFIG = {
   host: process.env.MQTT_HOST || "14.225.252.85",
@@ -145,6 +146,10 @@ setInterval(async () => {
             DO UPDATE SET data_ts = EXCLUDED.data_ts, value = EXCLUDED.value, current_ts = EXCLUDED.current_ts;
           `;
           await client.query(queryText, [stationId, parameter, formattedDataTs, parsedValue, currentFetchTs]);
+
+          // 🔴 THÊM DÒNG NÀY ĐỂ KIỂM TRA CẢNH BÁO:
+          checkAndAlert(stationId, parameter, parsedValue);
+          
         } catch (err) { console.error(`❌ [MQTT] Lỗi lưu bảng logger_latest:`, err.message); }
       }
     }

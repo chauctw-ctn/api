@@ -2,6 +2,7 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
 const { openDb } = require("../config/connection");
+const { checkAndAlert } = require("./alertService");
 
 const DEFAULT_TVA_CONFIG = {
   baseUrl: process.env.TVA_URL || "http://camau.dulieuquantrac.com:8906",
@@ -136,6 +137,10 @@ async function fetchTVAData() {
             DO UPDATE SET data_ts = EXCLUDED.data_ts, value = EXCLUDED.value, current_ts = EXCLUDED.current_ts;
           `;
           await dbClient.query(queryText, [stationId, parameter, ts, parsedValue, currentFetchTs]);
+
+          // 🔴 THÊM DÒNG NÀY ĐỂ KIỂM TRA CẢNH BÁO:
+          checkAndAlert(stationId, parameter, parsedValue);
+          
         } catch (err) { console.error(`❌ [TVA] Lỗi ghi logger_latest:`, err.message); }
       }
     }

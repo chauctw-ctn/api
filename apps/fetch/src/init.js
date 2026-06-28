@@ -30,7 +30,7 @@ async function initDatabase() {
       )
     `);
 
-    // 2. Tạo bảng MAPPING TAG (Đã tách phân rã các trường nguồn để JOIN siêu tốc)
+    // 2. Tạo bảng MAPPING TAG
     await db.query(`
       CREATE TABLE logger_tag_mappings (
         id SERIAL PRIMARY KEY,
@@ -42,7 +42,8 @@ async function initDatabase() {
         UNIQUE(source_logger_id, source_tag_key, target_station_id)
       )
     `);
-    // 3. Tạo bảng DỮ LIỆU GẦN NHẤT (Chuyển sang kiểu dữ liệu TIMESTAMPTZ)
+
+    // 3. Tạo bảng DỮ LIỆU GẦN NHẤT
     await db.query(`
       CREATE TABLE logger_latest (
         logger_id VARCHAR(100) NOT NULL,
@@ -54,7 +55,7 @@ async function initDatabase() {
       )
     `);
 
-    // 4. Tạo bảng DỮ LIỆU LỊCH SỬ (Sử dụng BIGSERIAL tránh tràn số và TIMESTAMPTZ)
+    // 4. Tạo bảng DỮ LIỆU LỊCH SỬ
     await db.query(`
       CREATE TABLE logger_readings (
         id BIGSERIAL PRIMARY KEY,
@@ -66,7 +67,7 @@ async function initDatabase() {
       )
     `);
 
-    // 5. Cấu hình ngưỡng Min/Max (Đã sửa kiểu dữ liệu để không lỗi FK)
+    // 5. Cấu hình ngưỡng Min/Max (Đã thêm last_alerted_ts để tracking chu kỳ gửi tin)
     await db.query(`
       CREATE TABLE alert_thresholds (
         id SERIAL PRIMARY KEY,
@@ -75,20 +76,22 @@ async function initDatabase() {
         min_value DOUBLE PRECISION,
         max_value DOUBLE PRECISION,
         enabled INTEGER DEFAULT 1,
+        last_alerted_ts TIMESTAMPTZ,
         UNIQUE(station_id, tag_key)
       )
     `);
 
-    // 6. Cấu hình Telegram
+    // 6. Cấu hình Telegram (Đã thêm alert_interval_minutes quản lý thời gian cooldown)
     await db.query(`
       CREATE TABLE telegram_configs (
         id SERIAL PRIMARY KEY,
         bot_token TEXT,
         chat_id TEXT,
-        enabled INTEGER DEFAULT 1
+        enabled INTEGER DEFAULT 1,
+        alert_interval_minutes INTEGER DEFAULT 15
       )
     `);
-    await db.query("INSERT INTO telegram_configs (id, bot_token, chat_id, enabled) VALUES (1, '', '', 0)");
+    await db.query("INSERT INTO telegram_configs (id, bot_token, chat_id, enabled, alert_interval_minutes) VALUES (1, '', '', 0, 15)");
 
     // 7. Quản lý tài khoản User
     await db.query(`
@@ -103,14 +106,11 @@ async function initDatabase() {
     `);
 
     // ==================== KHỞI TẠO CHỈ MỤC (INDEXES) CHIẾN LƯỢC ====================
-    
-    // Composite Index: Tối ưu tuyệt đối cho hàm getHistoryData khi vẽ Chart (Lọc theo Trạm -> Thẻ -> Thời gian giảm dần)
     await db.query(`
       CREATE INDEX IF NOT EXISTS idx_readings_query 
       ON logger_readings (logger_id, tag_key, data_ts DESC);
     `);
 
-    // Index hỗ trợ tìm kiếm mapping trạm ảo nhanh hơn
     await db.query(`
       CREATE INDEX IF NOT EXISTS idx_mappings_lookup 
       ON logger_tag_mappings (target_station_id);

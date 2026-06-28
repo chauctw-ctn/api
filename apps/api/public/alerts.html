@@ -28,15 +28,40 @@
       margin-bottom: 28px;
     }
 
-    .form-group { margin-bottom: 20px; }
+    /* ── Section header ── */
+    .section-header {
+      margin: 28px 0 16px;
+      padding: 10px 14px;
+      background: #f0f4ff;
+      border-left: 4px solid #007bff;
+      border-radius: 4px;
+      font-size: 15px;
+      font-weight: bold;
+      color: #333;
+    }
+
+    /* ── Telegram card ── */
+    .telegram-card {
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 18px;
+      background: #fafafa;
+      margin-bottom: 6px;
+    }
+
+    .form-group { margin-bottom: 16px; }
+    .form-group:last-child { margin-bottom: 0; }
 
     label {
       display: block;
       font-weight: bold;
       margin-bottom: 6px;
+      font-size: 14px;
     }
 
-    select, input[type="number"] {
+    input[type="text"],
+    input[type="number"],
+    select {
       width: 100%;
       padding: 9px 12px;
       border: 1px solid #ccc;
@@ -45,11 +70,68 @@
       transition: border-color 0.2s;
     }
 
-    select:focus, input[type="number"]:focus {
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    select:focus {
       border-color: #007bff;
       outline: none;
     }
 
+    .input-hint {
+      font-size: 12px;
+      color: #888;
+      margin-top: 4px;
+    }
+
+    /* ── Checkbox ── */
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+      user-select: none;
+    }
+    .checkbox-group input[type="checkbox"] {
+      width: 16px; height: 16px;
+      cursor: pointer; flex-shrink: 0;
+    }
+    .checkbox-group label {
+      margin: 0; font-weight: normal; cursor: pointer;
+    }
+
+    /* ── Button row ── */
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 9px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 14px;
+      transition: background 0.2s, opacity 0.2s;
+    }
+    button:disabled { opacity: 0.65; cursor: not-allowed; }
+
+    .btn-primary  { background: #007bff; color: white; }
+    .btn-primary:hover:not(:disabled)  { background: #0056b3; }
+
+    .btn-success  { background: #28a745; color: white; }
+    .btn-success:hover:not(:disabled)  { background: #218838; }
+
+    .btn-outline  { background: white; color: #007bff; border: 1.5px solid #007bff; }
+    .btn-outline:hover:not(:disabled)  { background: #f0f4ff; }
+
+    .btn-sm { padding: 7px 16px; font-size: 13px; }
+
+    .inline-status { font-size: 13px; font-weight: bold; }
+
+    /* ── Tag cards ── */
     .tag-row {
       border: 1px solid #e0e0e0;
       padding: 16px;
@@ -73,39 +155,6 @@
     }
     .grid-inputs .form-group { margin-bottom: 0; }
 
-    .checkbox-group {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 14px;
-      user-select: none;
-    }
-    .checkbox-group input[type="checkbox"] {
-      width: 16px;
-      height: 16px;
-      cursor: pointer;
-      flex-shrink: 0;
-    }
-    .checkbox-group label {
-      margin: 0;
-      font-weight: normal;
-      cursor: pointer;
-    }
-
-    .btn-save {
-      background: #28a745;
-      color: white;
-      padding: 8px 22px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      font-weight: bold;
-      font-size: 14px;
-      transition: background 0.2s;
-    }
-    .btn-save:hover:not(:disabled) { background: #218838; }
-    .btn-save:disabled { background: #adb5bd; cursor: not-allowed; }
-
     .tag-footer {
       display: flex;
       align-items: center;
@@ -115,6 +164,7 @@
 
     .tag-save-status { font-size: 13px; font-weight: bold; }
 
+    /* ── Global status ── */
     .status {
       margin-top: 16px;
       padding: 11px 14px;
@@ -126,31 +176,65 @@
     .status.success { background: #d4edda; color: #155724; display: block; }
     .status.error   { background: #f8d7da; color: #721c24; display: block; }
     .status.info    { background: #d1ecf1; color: #0c5460; display: block; }
-
-    .section-header {
-      margin-top: 26px;
-      padding-top: 16px;
-      border-top: 2px solid #eee;
-      font-size: 16px;
-      font-weight: bold;
-      color: #444;
-    }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <h2>🛠️ Cấu Hình Ngưỡng Cảnh Báo</h2>
+  <h2>🛠️ Cấu Hình Cảnh Báo Hệ Thống</h2>
+
+  <div class="section-header">📱 1. Cấu Hình Kênh Gửi Cảnh Báo (Telegram)</div>
+
+  <div class="telegram-card">
+    <div class="form-group">
+      <label for="botToken">Bot Token:</label>
+      <input type="text" id="botToken" placeholder="110201543:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw">
+      <p class="input-hint">Lấy từ @BotFather trên Telegram.</p>
+    </div>
+
+    <div class="form-group">
+      <label for="chatId">Chat ID:</label>
+      <input type="text" id="chatId" placeholder="-1001234567890">
+      <p class="input-hint">ID của nhóm hoặc kênh nhận cảnh báo. Dùng @userinfobot để lấy.</p>
+    </div>
+
+    <div class="checkbox-group">
+      <input type="checkbox" id="telegramEnabled">
+      <label for="telegramEnabled">Kích hoạt gửi cảnh báo qua Telegram</label>
+    </div>
+
+    <div class="form-group" style="margin-bottom: 18px;">
+      <label for="alertInterval">Chu kỳ gửi lại cảnh báo (phút):</label>
+      <input type="number" id="alertInterval" min="1" placeholder="15">
+      <p class="input-hint">Khoảng thời gian tối thiểu (cooldown) để lặp lại cảnh báo cho cùng một chỉ số.</p>
+    </div>
+    <div class="form-group" style="margin-bottom: 18px;">
+      <label for="offlineDelay">Thời gian phát hiện thiết bị Offline (phút):</label>
+      <input type="number" id="offlineDelay" min="5" placeholder="30">
+      <p class="input-hint">Hệ thống báo động nếu dữ liệu cảm biến bị đơ/trễ so với giờ cào, hoặc dừng cập nhật quá số phút này.</p>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-success btn-sm" id="btnSaveTelegram" onclick="saveTelegramConfig()">
+        💾 Lưu cấu hình
+      </button>
+      <button class="btn-outline btn-sm" id="btnTestTelegram" onclick="testTelegramConfig()">
+        📨 Gửi tin nhắn test
+      </button>
+      <span class="inline-status" id="telegramStatus"></span>
+    </div>
+  </div>
+
+  <div class="section-header">⚙️ 2. Cấu Hình Ngưỡng Cảnh Báo Theo Thiết Bị</div>
 
   <div class="form-group">
-    <label for="loggerSelect">1. Chọn Thiết Bị (Logger ID):</label>
+    <label for="loggerSelect">Chọn Thiết Bị (Logger ID):</label>
     <select id="loggerSelect" onchange="onLoggerChange()">
       <option value="">-- Đang tải danh sách logger... --</option>
     </select>
   </div>
 
   <div id="tagsContainer" style="display:none;">
-    <p class="section-header">2. Danh sách Tag thuộc Logger</p>
     <div id="tagsList"></div>
   </div>
 
@@ -173,9 +257,121 @@
     amino:      "Hàm lượng Amino"
   };
 
-  document.addEventListener("DOMContentLoaded", loadLoggerDropdown);
+  /**
+   * 🗺️ DICTIONARY CHUYỂN ĐỔI NGAY TRÊN UI MODULE CẢNH BÁO
+   * Giúp ép các key lỗi từ nguồn dữ liệu thô về đúng chuẩn Whitelist của API hệ thống.
+   */
+  const TAG_ALIAS_UI_MAP = {
+    "ph":           "ph",
+    "ph":           "ph",
+    "tds":          "tds",
+    "tds":          "tds",
+    "nitrat":       "no3",   // Ánh xạ chuỗi "nitrat" từ SCADA sang "no3" hợp lệ
+    "no3":          "no3",
+    "nh4+":         "nh4",
+    "nh4":          "nh4",
+    "amoni":        "nh4",
+    "mucnuoc":      "level",
+    "h":            "level",
+    "level":        "level",
+    "luuluong":     "flow",
+    "q":            "flow",
+    "flow":         "flow",
+    "tongluuluong": "totalIndex",
+    "v":            "totalIndex",
+    "totalindex":   "totalIndex",
+    "amino":        "amino"
+  };
 
-  // ─── Load dropdown ─────────────────────────────────────────────────────────
+  document.addEventListener("DOMContentLoaded", () => {
+    loadTelegramConfig();
+    loadLoggerDropdown();
+  });
+
+  // ══ TELEGRAM ════════════════════════════════════════════════════════════════
+
+  async function loadTelegramConfig() {
+    try {
+      const res  = await fetch(`${API_BASE}/telegram/config`);
+      const body = await res.json();
+      if (body.success && body.data) {
+        document.getElementById("botToken").value          = body.data.bot_token || "";
+        document.getElementById("chatId").value            = body.data.chat_id   || "";
+        document.getElementById("telegramEnabled").checked = Boolean(body.data.enabled);
+        document.getElementById("alertInterval").value     = body.data.alert_interval_minutes || 15;
+        document.getElementById("offlineDelay").value      = body.data.offline_delay_minutes || 30; // Thêm dòng này
+      }
+    } catch (err) {
+      setInlineStatus("telegramStatus", "⚠️ Không tải được cấu hình", "orange");
+    }
+  }
+
+  async function saveTelegramConfig() {
+    const btn           = document.getElementById("btnSaveTelegram");
+    const botToken      = document.getElementById("botToken").value.trim();
+    const chatId        = document.getElementById("chatId").value.trim();
+    const enabled       = document.getElementById("telegramEnabled").checked;
+    const alertInterval = document.getElementById("alertInterval").value.trim();
+    const offlineDelay  = document.getElementById("offlineDelay").value.trim(); // Thêm dòng này
+
+    if (!botToken) { setInlineStatus("telegramStatus", "❌ Thiếu Bot Token", "red"); return; }
+    if (!chatId)   { setInlineStatus("telegramStatus", "❌ Thiếu Chat ID", "red"); return; }
+
+    btn.disabled = true;
+    btn.textContent = "⏳ Đang lưu...";
+    setInlineStatus("telegramStatus", "", "");
+
+    try {
+      const res    = await fetch(`${API_BASE}/telegram/config`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ 
+          bot_token: botToken, 
+          chat_id: chatId, 
+          enabled, 
+          alert_interval_minutes: alertInterval,
+          offline_delay_minutes: offlineDelay // Thêm dòng này
+        })
+      });
+      const result = await res.json();
+
+      if (result.success) {
+        setInlineStatus("telegramStatus", "✅ Đã lưu", "#155724");
+      } else {
+        setInlineStatus("telegramStatus", "❌ " + (result.message || "Lỗi"), "red");
+      }
+    } catch (err) {
+      setInlineStatus("telegramStatus", "❌ Lỗi kết nối: " + err.message, "red");
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = "💾 Lưu cấu hình";
+    }
+  }
+
+  async function testTelegramConfig() {
+    const btn = document.getElementById("btnTestTelegram");
+    btn.disabled = true;
+    btn.textContent = "⏳ Đang gửi...";
+    setInlineStatus("telegramStatus", "", "");
+
+    try {
+      const res    = await fetch(`${API_BASE}/telegram/test`, { method: "POST" });
+      const result = await res.json();
+
+      if (result.success) {
+        setInlineStatus("telegramStatus", "📨 Đã gửi! Kiểm tra Telegram của bạn.", "#155724");
+      } else {
+        setInlineStatus("telegramStatus", "❌ " + (result.message || "Lỗi"), "red");
+      }
+    } catch (err) {
+      setInlineStatus("telegramStatus", "❌ Lỗi kết nối: " + err.message, "red");
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = "📨 Gửi tin nhắn test";
+    }
+  }
+
+  // ══ LOGGER DROPDOWN ═════════════════════════════════════════════════════════
 
   async function loadLoggerDropdown() {
     const sel = document.getElementById("loggerSelect");
@@ -189,8 +385,7 @@
       const body = await res.json();
       if (body.success && body.data) {
         const items = Array.isArray(body.data)
-          ? body.data
-          : Object.values(body.data).flat();
+          ? body.data : Object.values(body.data).flat();
         items.forEach(item => {
           if (item?.source_logger_id) loggers.add(item.source_logger_id);
           if (item?.logger_id)        loggers.add(item.logger_id);
@@ -214,15 +409,12 @@
     sel.innerHTML = '<option value="">-- Chọn một Logger ID --</option>';
     [...loggers].sort().forEach(id => {
       const opt = document.createElement("option");
-      opt.value = id;
-      opt.textContent = id;
+      opt.value = id; opt.textContent = id;
       sel.appendChild(opt);
     });
     sel.disabled = false;
     hideStatus();
   }
-
-  // ─── Chọn logger ───────────────────────────────────────────────────────────
 
   function onLoggerChange() {
     const loggerId = document.getElementById("loggerSelect").value;
@@ -234,7 +426,7 @@
     }
   }
 
-  // ─── Load tags ─────────────────────────────────────────────────────────────
+  // ══ TAGS ════════════════════════════════════════════════════════════════════
 
   async function loadTags(loggerId) {
     showStatus("Đang tải danh sách tag...", "info");
@@ -249,14 +441,42 @@
         return;
       }
 
-      renderTags(body.data, loggerId);
+      // 🔴 BỘ LỌC CHUYỂN ĐỔI NGAY KHI NHẬN DATA TỪ API ĐỂ TRÁNH LỖI VALIDATION
+      const normalizedData = [];
+      const seenKeys = new Set();
+
+      body.data.forEach(tag => {
+        const rawKey = tag.tag_key;
+        // Kiểm tra trong danh sách alias, ví dụ: "pH" -> "ph", "nitrat" -> "no3"
+        const cleanKey = TAG_ALIAS_UI_MAP[rawKey] || TAG_ALIAS_UI_MAP[String(rawKey).trim().toLowerCase()];
+        
+        if (cleanKey) {
+          // Tránh bị lặp thẻ trên UI nếu database tồn tại song song cả 'ph' và 'pH'
+          if (!seenKeys.has(cleanKey)) {
+            seenKeys.add(cleanKey);
+            normalizedData.push({
+              ...tag,
+              tag_key: cleanKey // Đè key chuẩn hệ thống vào để hiển thị và submit lên API
+            });
+          } else {
+            // Ưu tiên lấy bản ghi đã có cấu hình min/max nếu gặp phần tử trùng lặp quy đổi
+            const existingIndex = normalizedData.findIndex(item => item.tag_key === cleanKey);
+            if (existingIndex !== -1 && (tag.min_value !== null || tag.max_value !== null)) {
+              normalizedData[existingIndex] = { ...tag, tag_key: cleanKey };
+            }
+          }
+        } else {
+          // Giữ nguyên đối với các tham số khác nếu không nằm trong danh sách map
+          normalizedData.push(tag);
+        }
+      });
+
+      renderTags(normalizedData, loggerId);
       hideStatus();
     } catch (err) {
       showStatus("Lỗi kết nối API: " + err.message, "error");
     }
   }
-
-  // ─── Render tags ───────────────────────────────────────────────────────────
 
   function renderTags(tags, loggerId) {
     const container = document.getElementById("tagsList");
@@ -279,11 +499,13 @@
         <div class="grid-inputs">
           <div class="form-group">
             <label for="min_${tagKey}">Ngưỡng dưới (Min):</label>
-            <input type="number" id="min_${tagKey}" value="${minVal}" step="any" placeholder="Bỏ trống = không giới hạn">
+            <input type="number" id="min_${tagKey}" value="${minVal}" step="any"
+                   placeholder="Bỏ trống = không giới hạn">
           </div>
           <div class="form-group">
             <label for="max_${tagKey}">Ngưỡng trên (Max):</label>
-            <input type="number" id="max_${tagKey}" value="${maxVal}" step="any" placeholder="Bỏ trống = không giới hạn">
+            <input type="number" id="max_${tagKey}" value="${maxVal}" step="any"
+                   placeholder="Bỏ trống = không giới hạn">
           </div>
         </div>
         <div class="checkbox-group">
@@ -292,7 +514,7 @@
         </div>
         <div class="tag-footer">
           <span class="tag-save-status" id="save-status-${tagKey}"></span>
-          <button class="btn-save" id="btn-save-${tagKey}"
+          <button class="btn-success btn-sm" id="btn-save-${tagKey}"
                   onclick="saveAlert('${loggerId}', '${tagKey}')">
             💾 Lưu cấu hình
           </button>
@@ -303,8 +525,6 @@
 
     document.getElementById("tagsContainer").style.display = "block";
   }
-
-  // ─── Lưu cấu hình ─────────────────────────────────────────────────────────
 
   async function saveAlert(loggerId, tagKey) {
     const btn        = document.getElementById(`btn-save-${tagKey}`);
@@ -319,14 +539,6 @@
       return;
     }
 
-    const payload = {
-      station_id: loggerId,
-      tag_key:    tagKey,
-      min_value:  minInput !== "" ? parseFloat(minInput) : null,
-      max_value:  maxInput !== "" ? parseFloat(maxInput) : null,
-      enabled
-    };
-
     btn.disabled = true;
     btn.textContent = "⏳ Đang lưu...";
     setTagStatus(statusSpan, "", "");
@@ -335,14 +547,20 @@
       const res    = await fetch(`${API_BASE}/logger/alerts/config`, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify(payload)
+        body:    JSON.stringify({
+          station_id: loggerId,
+          tag_key:    tagKey, // Đảm bảo key gửi lên đã là 'ph', 'tds', 'no3' chuẩn chỉ
+          min_value:  minInput !== "" ? parseFloat(minInput) : null,
+          max_value:  maxInput !== "" ? parseFloat(maxInput) : null,
+          enabled
+        })
       });
       const result = await res.json();
 
       if (result.success) {
         setTagStatus(statusSpan, "✅ Đã lưu", "#155724");
       } else {
-        setTagStatus(statusSpan, "❌ " + (result.message || "Lỗi không xác định"), "red");
+        setTagStatus(statusSpan, "❌ " + (result.message || "Lỗi"), "red");
       }
     } catch (err) {
       setTagStatus(statusSpan, "❌ Lỗi kết nối: " + err.message, "red");
@@ -352,7 +570,13 @@
     }
   }
 
-  // ─── Helpers ───────────────────────────────────────────────────────────────
+  // ══ HELPERS ═════════════════════════════════════════════════════════════════
+
+  function setInlineStatus(id, text, color) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.style.color = color;
+  }
 
   function setTagStatus(el, text, color) {
     el.textContent = text;

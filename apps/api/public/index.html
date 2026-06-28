@@ -9,6 +9,78 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="index.css">
+    
+    <style>
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 16px 0;
+            user-select: none;
+        }
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #28a745;
+        }
+        .checkbox-group label {
+            margin: 0;
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .tag-row {
+            border: 1px solid var(--border);
+            padding: 18px;
+            margin-top: 16px;
+            border-radius: 8px;
+            background: var(--surface-2);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        }
+        .tag-row h4 {
+            margin: 0 0 14px;
+            padding-bottom: 8px;
+            border-bottom: 1px dashed var(--border);
+            font-size: 15px;
+            font-weight: 600;
+        }
+        .grid-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 12px;
+        }
+        .tag-footer {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 14px;
+            margin-top: 10px;
+        }
+        .tag-save-status {
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .status {
+            margin-top: 16px;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            text-align: center;
+            display: none;
+            font-size: 14px;
+        }
+        .status.success { background: #d4edda; color: #155724; display: block; }
+        .status.error   { background: #f8d7da; color: #721c24; display: block; }
+        .status.info    { background: #d1ecf1; color: #0c5460; display: block; }
+        
+        .btn-sm {
+            padding: 6px 14px;
+            font-size: 13px;
+            border-radius: 4px;
+        }
+    </style>
 </head>
 <body>
 
@@ -31,6 +103,7 @@
                 <button class="tab-btn active" onclick="switchTab('monitor')">Giám sát</button>
                 <button class="tab-btn" onclick="switchTab('mapping')">Ánh xạ</button>
                 <button class="tab-btn" onclick="switchTab('analytics')">Báo cáo KPI</button>
+                <button class="tab-btn" onclick="switchTab('alerts')">Cấu hình Cảnh báo</button>
             </div>
         </div>
 
@@ -115,7 +188,17 @@
             </div>
         </div>
 
-        <div class="sidebar-section api-links-section" style="margin-top: auto; border-top: 1px solid var(--border); background: var(--surface-2);">
+        <div id="sidebar-alerts" style="display:none;">
+            <div class="sidebar-section">
+                <p class="section-label">Ngưỡng cảnh báo chỉ số</p>
+                <label class="field-label">Chọn Thiết Bị (Logger ID):</label>
+                <select id="loggerSelect" onchange="onLoggerChange()">
+                    <option value="">-- Đang tải danh sách logger... --</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="sidebar-section api-links-section" style="margin-top: auto; border-top: 1px solid var(--border); background: var(--surface-2); ">
             <p class="section-label" style="color: var(--accent); font-weight: 600;">Hệ thống API Endpoints</p>
             <div style="display: flex; flex-direction: column; gap: 8px;">
                 <div id="lnk_api_helpers" class="api-debug-link" style="cursor: pointer;">
@@ -227,6 +310,66 @@
             </div>
         </div>
 
+        <div id="panel-alerts" class="tab-panel">
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">📱 Kênh Gửi Cảnh Báo Telegram</div>
+                        <div class="card-subtitle">Cấu hình kết nối thông báo tự động và chu kỳ phát hiện lỗi</div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="form-group" style="margin-bottom: 14px;">
+                        <label class="field-label">Bot Token</label>
+                        <input type="text" id="botToken" placeholder="110201543:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 14px;">
+                        <label class="field-label">Chat ID</label>
+                        <input type="text" id="chatId" placeholder="-1001234567890">
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="telegramEnabled">
+                        <label for="telegramEnabled">Kích hoạt gửi cảnh báo qua Telegram</label>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 14px;">
+                        <label class="field-label">Chu kỳ gửi lại cảnh báo vượt ngưỡng (phút)</label>
+                        <input type="number" id="alertInterval" min="1" placeholder="15">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 18px;">
+                        <label class="field-label">Thời gian phát hiện thiết bị Offline (phút)</label>
+                        <input type="number" id="offlineDelay" min="5" placeholder="30">
+                    </div>
+                    <div class="btn-row">
+                        <button class="btn btn-success btn-sm" id="btnSaveTelegram" onclick="saveTelegramConfig()">
+                            💾 Lưu cấu hình kênh
+                        </button>
+                        <button class="btn btn-outline btn-sm" id="btnTestTelegram" onclick="testTelegramConfig()">
+                            📨 Gửi tin nhắn test
+                        </button>
+                        <span class="inline-status" id="telegramStatus"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top: 20px;">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">⚙️ Ngưỡng Biên Độ Trị Số Thiết Bị</div>
+                        <div class="card-subtitle">Thiết lập giới hạn an toàn Min / Max cho từng chỉ số đo</div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="tagsContainer" style="display:none;">
+                        <div id="tagsList"></div>
+                    </div>
+                    <div id="tagsEmptyState" class="state-empty">
+                        Vui lòng chọn một Thiết bị (Logger ID) ở thanh menu bên trái để nạp cấu hình ngưỡng chỉ số.
+                    </div>
+                </div>
+            </div>
+            <div id="statusMessage" class="status"></div>
+        </div>
+
     </main>
 </div>
 
@@ -243,8 +386,394 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
         Báo cáo KPI
     </button>
+    <button class="bottom-nav-btn" id="bnav-alerts" onclick="mobileTab('alerts')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Cảnh báo
+    </button>
 </nav>
 
 <script src="index.js"></script>
+
+<script>
+  "use strict";
+
+  // Đảm bảo API_BASE luôn có sẵn trong script này, dù index.js khai báo dưới dạng const (block-scoped)
+  if (typeof API_BASE === "undefined") {
+    window.API_BASE = window.location.origin + "/api";
+  }
+
+  const PARAMETER_NAME_MAP = {
+    level:      "Mực nước",
+    flow:       "Lưu lượng",
+    totalIndex: "Tổng lưu lượng",
+    ph:         "Độ pH",
+    tds:        "Tổng chất rắn hòa tan (TDS)",
+    no3:         "Hàm lượng Nitrat (NO₃)",
+    nh4:        "Hàm lượng Amoni (NH₄⁺)",
+    amino:      "Hàm lượng Amino"
+  };
+
+  const TAG_ALIAS_UI_MAP = {
+    "ph": "ph", "tds": "tds", "nitrat": "no3", "no3": "no3", "nh4+": "nh4", "nh4": "nh4",
+    "amoni": "nh4", "mucnuoc": "level", "h": "level", "level": "level", "luuluong": "flow",
+    "q": "flow", "flow": "flow", "tongluuluong": "totalIndex", "v": "totalIndex",
+    "totalindex": "totalIndex", "amino": "amino"
+  };
+
+  // 🛡️ KHỐI HẢI QUAN DECORATOR TÍCH HỢP LUỒNG TỰ ĐỘNG ÉP TẢI DỮ LIỆU TỪ POSTGRES (FORCED LIVE RELOAD)
+  window.addEventListener('DOMContentLoaded', () => {
+      const origSwitchTab = window.switchTab;
+      window.switchTab = function(tabName) {
+          document.getElementById('sidebar-alerts').style.display = 'none';
+          document.getElementById('panel-alerts').classList.remove('active');
+          Array.from(document.querySelectorAll('.tab-btn')).forEach(b => {
+              if (b.textContent.includes('Cảnh báo')) b.classList.remove('active');
+          });
+
+          if (tabName === 'alerts') {
+              document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+              document.querySelectorAll('.sidebar > div').forEach(s => {
+                  if (s.id !== 'sidebar-alerts' && !s.classList.contains('sidebar-section')) s.style.display = 'none';
+              });
+              document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+
+              document.getElementById('sidebar-alerts').style.display = 'block';
+              document.getElementById('panel-alerts').classList.add('active');
+              const alertBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.textContent.includes('Cảnh báo'));
+              if (alertBtn) alertBtn.classList.add('active');
+
+              // 🔴 LUÔN LUÔN KÍCH HOẠT TẢI MỚI KHI DI CHUYỂN QUA TAB CẢNH BÁO
+              loadTelegramConfig();
+              
+              // Reload dropdown & tags mỗi lần vào tab để đảm bảo dữ liệu Postgres luôn mới
+              // Không dùng disabled check để tránh race condition với async loadLoggerDropdown
+              loadLoggerDropdown();
+          } else {
+              if (typeof origSwitchTab === 'function') origSwitchTab(tabName);
+          }
+      };
+
+      const origMobileTab = window.mobileTab;
+      window.mobileTab = function(tabName) {
+          document.getElementById('panel-alerts').classList.remove('active');
+          document.getElementById('bnav-alerts').classList.remove('active');
+
+          if (tabName === 'alerts') {
+              document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+              document.querySelectorAll('.bottom-nav-btn').forEach(b => b.classList.remove('active'));
+              
+              document.getElementById('panel-alerts').classList.add('active');
+              document.getElementById('bnav-alerts').classList.add('active');
+              
+              loadTelegramConfig();
+              // Reload dropdown & tags mỗi lần vào tab (không kiểm tra disabled để tránh race condition)
+              loadLoggerDropdown();
+          } else {
+              if (typeof origMobileTab === 'function') origMobileTab(tabName);
+          }
+      };
+
+      loadTelegramConfig();
+      loadLoggerDropdown();
+  });
+
+  // ══ XỬ LÝ KHỐI TELEGRAM CONFIG ════════════════════════════════════════════
+
+  async function loadTelegramConfig() {
+    try {
+      const res  = await fetch(`${API_BASE}/telegram/config`);
+      const body = await res.json();
+      if (body.success && body.data) {
+        document.getElementById("botToken").value          = body.data.bot_token || "";
+        document.getElementById("chatId").value            = body.data.chat_id   || "";
+        document.getElementById("telegramEnabled").checked = Boolean(body.data.enabled);
+        document.getElementById("alertInterval").value     = body.data.alert_interval_minutes || 15;
+        document.getElementById("offlineDelay").value      = body.data.offline_delay_minutes || 30;
+      }
+    } catch (err) {
+      setInlineStatus("telegramStatus", "⚠️ Không tải được cấu hình", "orange");
+    }
+  }
+
+  async function saveTelegramConfig() {
+    const btn           = document.getElementById("btnSaveTelegram");
+    const botToken      = document.getElementById("botToken").value.trim();
+    const chatId        = document.getElementById("chatId").value.trim();
+    const enabled       = document.getElementById("telegramEnabled").checked;
+    const alertInterval = document.getElementById("alertInterval").value.trim();
+    const offlineDelay  = document.getElementById("offlineDelay").value.trim();
+
+    if (!botToken) { setInlineStatus("telegramStatus", "❌ Thiếu Bot Token", "red"); return; }
+    if (!chatId)   { setInlineStatus("telegramStatus", "❌ Thiếu Chat ID", "red"); return; }
+
+    btn.disabled = true;
+    btn.textContent = "⏳ Đang lưu...";
+    setInlineStatus("telegramStatus", "", "");
+
+    try {
+      const res    = await fetch(`${API_BASE}/telegram/config`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ 
+          bot_token: botToken, 
+          chat_id: chatId, 
+          enabled, 
+          alert_interval_minutes: alertInterval,
+          offline_delay_minutes: offlineDelay
+        })
+      });
+      const result = await res.json();
+      if (result.success) {
+        setInlineStatus("telegramStatus", "✅ Đã lưu", "#28a745");
+      } else {
+        setInlineStatus("telegramStatus", "❌ " + (result.message || "Lỗi"), "red");
+      }
+    } catch (err) {
+      setInlineStatus("telegramStatus", "❌ Lỗi kết nối: " + err.message, "red");
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = "💾 Lưu cấu hình kênh";
+    }
+  }
+
+  async function testTelegramConfig() {
+    const btn = document.getElementById("btnTestTelegram");
+    btn.disabled = true;
+    btn.textContent = "⏳ Đang gửi...";
+    setInlineStatus("telegramStatus", "", "");
+
+    try {
+      const res    = await fetch(`${API_BASE}/telegram/test`, { method: "POST" });
+      const result = await res.json();
+      if (result.success) {
+        setInlineStatus("telegramStatus", "📨 Đã gửi! Kiểm tra Telegram.", "#28a745");
+      } else {
+        setInlineStatus("telegramStatus", "❌ " + (result.message || "Lỗi"), "red");
+      }
+    } catch (err) {
+      setInlineStatus("telegramStatus", "❌ Lỗi kết nối: " + err.message, "red");
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = "📨 Gửi tin nhắn test";
+    }
+  }
+
+  // ══ XỬ LÝ KHỐI NGƯỠNG ĐO THIẾT BỊ ═════════════════════════════════════════
+
+  async function loadLoggerDropdown() {
+    const sel = document.getElementById("loggerSelect");
+    sel.innerHTML = '<option value="">-- Đang tải... --</option>';
+    sel.disabled = true;
+    const loggers = new Set();
+
+    try {
+      const res  = await fetch(`${API_BASE}/mappings/helpers`);
+      const body = await res.json();
+      if (body.success && body.data) {
+        const items = Array.isArray(body.data) ? body.data : Object.values(body.data).flat();
+        items.forEach(item => {
+          if (item?.source_logger_id) loggers.add(item.source_logger_id);
+          if (item?.logger_id)        loggers.add(item.logger_id);
+          if (typeof item === "string") loggers.add(item);
+        });
+      }
+    } catch (_) {}
+
+    if (loggers.size === 0) {
+      try {
+        const res  = await fetch(`${API_BASE}/logger/latest/grouped`);
+        const body = await res.json();
+        if (body.success && Array.isArray(body.data)) {
+          body.data.forEach(s => { if (s.station_id) loggers.add(s.station_id); });
+        }
+      } catch (_) {}
+    }
+
+    if (loggers.size === 0) loggers.add("monre_35_gs14");
+
+    sel.innerHTML = '<option value="">-- Chọn một Logger ID --</option>';
+    [...loggers].sort().forEach(id => {
+      const opt = document.createElement("option");
+      opt.value = id; opt.textContent = id;
+      sel.appendChild(opt);
+    });
+    sel.disabled = false;
+
+    const mainStation = document.getElementById("station_selector")?.value;
+    if (mainStation && loggers.has(mainStation)) {
+      sel.value = mainStation;
+    } else if (sel.options.length > 1) {
+      sel.selectedIndex = 1;
+    }
+
+    hideStatus();
+
+    // Tự động load tags ngay sau khi dropdown sẵn sàng (không phụ thuộc vào trạng thái disabled)
+    if (sel.value) {
+      loadTags(sel.value);
+    }
+  }
+
+  function onLoggerChange() {
+    const loggerId = document.getElementById("loggerSelect").value;
+    if (loggerId) {
+      document.getElementById("tagsEmptyState").style.display = "none";
+      loadTags(loggerId);
+    } else {
+      document.getElementById("tagsContainer").style.display = "none";
+      document.getElementById("tagsEmptyState").style.display = "block";
+      hideStatus();
+    }
+  }
+
+  async function loadTags(loggerId) {
+    showStatus("Đang tải danh sách tag...", "info");
+    document.getElementById("tagsContainer").style.display = "none";
+    const emptyState = document.getElementById("tagsEmptyState");
+    if (emptyState) emptyState.style.display = "none";
+
+    try {
+      const res  = await fetch(`${API_BASE}/logger/${encodeURIComponent(loggerId)}/tags`);
+      const body = await res.json();
+
+      if (!body.success || !Array.isArray(body.data) || body.data.length === 0) {
+        showStatus(`Không tìm thấy dữ liệu tag nào hợp lệ cho thiết bị [${loggerId}].`, "error");
+        return;
+      }
+
+      // 🔴 BỘ DỮ LIỆU ĐỒNG BỘ DỰA TRÊN SỰ ĐA DẠNG KEY ĐẦU VÀO ĐỂ HIỂN THỊ CẤU HÌNH TỪ DB ĐÚNG 100%
+      const normalizedData = [];
+      const seenKeys = new Set();
+
+      body.data.forEach(tag => {
+        const rawKey = tag.tag_key;
+        const cleanKey = TAG_ALIAS_UI_MAP[rawKey] || TAG_ALIAS_UI_MAP[String(rawKey).trim().toLowerCase()];
+        
+        if (cleanKey) {
+          if (!seenKeys.has(cleanKey)) {
+            seenKeys.add(cleanKey);
+            normalizedData.push({ ...tag, tag_key: cleanKey });
+          } else {
+            // Khi Postgres trả về bản ghi ghép lặp, ưu tiên chọn bản ghi chứa ngưỡng cấu hình thực tế
+            const idx = normalizedData.findIndex(item => item.tag_key === cleanKey);
+            if (idx !== -1 && (tag.min_value !== null || tag.max_value !== null)) {
+              normalizedData[idx] = { ...tag, tag_key: cleanKey };
+            }
+          }
+        } else {
+          normalizedData.push(tag);
+        }
+      });
+
+      renderTags(normalizedData, loggerId);
+      hideStatus();
+    } catch (err) {
+      showStatus("Lỗi kết nối API: " + err.message, "error");
+    }
+  }
+
+  function renderTags(tags, loggerId) {
+    const container = document.getElementById("tagsList");
+    container.innerHTML = "";
+
+    tags.forEach(tag => {
+      const tagKey    = tag.tag_key;
+      const paramName = PARAMETER_NAME_MAP[tagKey] || tagKey;
+      const minVal    = tag.min_value ?? "";
+      const maxVal    = tag.max_value ?? "";
+      const isEnabled = Boolean(tag.enabled);
+
+      const div = document.createElement("div");
+      div.className = "tag-row";
+      div.id = `tag-row-${tagKey}`;
+      div.innerHTML = `
+        <h4>🏷️ <span style="color:var(--accent)">${paramName}</span>
+            <small style="color:var(--text-muted); font-weight:normal; font-family:'JetBrains Mono'">${tagKey}</small>
+        </h4>
+        <div class="grid-inputs">
+          <div class="form-group">
+            <label class="field-label">Ngưỡng dưới (Min)</label>
+            <input type="number" id="min_${tagKey}" value="${minVal}" step="any" placeholder="Không giới hạn">
+          </div>
+          <div class="form-group">
+            <label class="field-label">Ngưỡng trên (Max)</label>
+            <input type="number" id="max_${tagKey}" value="${maxVal}" step="any" placeholder="Không giới hạn">
+          </div>
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="enabled_${tagKey}" ${isEnabled ? "checked" : ""}>
+          <label for="enabled_${tagKey}">Kích hoạt giám sát cảnh báo chỉ số này</label>
+        </div>
+        <div class="tag-footer">
+          <span class="tag-save-status" id="save-status-${tagKey}"></span>
+          <button class="btn btn-success btn-sm" id="btn-save-${tagKey}" onclick="saveAlert('${loggerId}', '${tagKey}')">
+            💾 Lưu cấu hình chỉ số
+          </button>
+        </div>
+      `;
+      container.appendChild(div);
+    });
+
+    document.getElementById("tagsContainer").style.display = "block";
+  }
+
+  async function saveAlert(loggerId, tagKey) {
+    const btn        = document.getElementById(`btn-save-${tagKey}`);
+    const statusSpan = document.getElementById(`save-status-${tagKey}`);
+    const minInput   = document.getElementById(`min_${tagKey}`).value.trim();
+    const maxInput   = document.getElementById(`max_${tagKey}`).value.trim();
+    const enabled    = document.getElementById(`enabled_${tagKey}`).checked;
+
+    if (minInput !== "" && maxInput !== "" && parseFloat(minInput) > parseFloat(maxInput)) {
+      setTagStatus(statusSpan, "❌ Min phải ≤ Max", "red");
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "⏳...";
+    setTagStatus(statusSpan, "", "");
+
+    try {
+      const res    = await fetch(`${API_BASE}/logger/alerts/config`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({
+          station_id: loggerId,
+          tag_key:    tagKey,
+          min_value:  minInput !== "" ? parseFloat(minInput) : null,
+          max_value:  maxInput !== "" ? parseFloat(maxInput) : null,
+          enabled
+        })
+      });
+      const result = await res.json();
+      if (result.success) {
+        setTagStatus(statusSpan, "✅ Đã lưu", "#28a745");
+      } else {
+        setTagStatus(statusSpan, "❌ " + (result.message || "Lỗi"), "red");
+      }
+    } catch (err) {
+      setTagStatus(statusSpan, "❌ Lỗi kết nối", "red");
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = "💾 Lưu cấu hình chỉ số";
+    }
+  }
+
+  function setInlineStatus(id, text, color) {
+    const el = document.getElementById(id);
+    el.textContent = text; el.style.color = color;
+  }
+  function setTagStatus(el, text, color) {
+    el.textContent = text; el.style.color = color;
+  }
+  function showStatus(text, type) {
+    const el = document.getElementById("statusMessage");
+    el.className = "status " + type; el.textContent = text;
+  }
+  function hideStatus() {
+    const el = document.getElementById("statusMessage");
+    el.className = "status"; el.style.display = "none"; el.textContent = "";
+  }
+</script>
 </body>
 </html>

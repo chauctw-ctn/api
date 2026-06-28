@@ -7,6 +7,7 @@ const router = express.Router(); // 🟢 Khai báo router ở đây (Duy nhất 
 const loggerController = require("../controllers/loggerController");
 const mappingController = require("../controllers/mappingController");
 const alertController = require("../controllers/alertController");
+const telegramController = require("../controllers/telegramController");
 
 // Định tuyến thành phần phía sau
 router.get("/logger/latest/raw", loggerController.getLatestDataRaw);
@@ -32,6 +33,12 @@ router.get("/analytics/flow-by-license", loggerController.getFlowAnalyticsByLice
 // Đồng bộ URL API Cảnh Báo
 router.get("/logger/:logger_id/tags", alertController.getTagsByLogger);
 router.post("/logger/alerts/config", alertController.saveAlertThreshold);
+
+
+// Telegram config
+router.get( "/telegram/config", telegramController.getTelegramConfig);
+router.post("/telegram/config", telegramController.saveTelegramConfig);
+router.post("/telegram/test",   telegramController.testTelegramConfig);
 
 // Xuất router ra để server.js sử dụng
 module.exports = router;

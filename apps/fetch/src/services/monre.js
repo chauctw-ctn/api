@@ -1,6 +1,7 @@
 "use strict";
 const axios = require('axios');
 const { openDb } = require("../config/connection");
+const { checkAndAlert } = require("./alertService");
 
 // --- CẤU HÌNH ĐỘNG ĐỌC TỪ HỆ THỐNG MÔI TRƯỜNG ---
 const CONFIG = {
@@ -193,6 +194,9 @@ async function fetchMonreData() {
                     DO UPDATE SET data_ts = EXCLUDED.data_ts, value = EXCLUDED.value, current_ts = EXCLUDED.current_ts;
                 `;
                 await client.query(queryLatest, [record.stationId, record.tagKey, record.dataTs, record.value, currentFetchTs]);
+                
+                // 🔴 THÊM DÒNG NÀY ĐỂ KIỂM TRA CẢNH BÁO:
+                checkAndAlert(record.stationId, record.tagKey, record.value);
             } catch (err) {
                 console.error(`❌ [MONRE] Lỗi lưu bảng logger_latest của trạm ${record.stationId}:`, err.message);
             }
