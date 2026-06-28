@@ -1,6 +1,9 @@
 ﻿|-- apps
 |   |-- api
 |   |   |-- public
+|   |   |   |-- alerts.html
+|   |   |   |-- analytics.html
+|   |   |   |-- analytics.js
 |   |   |   |-- index.css
 |   |   |   |-- index.html
 |   |   |   |-- index.js
@@ -8,6 +11,7 @@
 |   |   |   |-- config
 |   |   |   |   |-- connection.js
 |   |   |   |-- controllers
+|   |   |   |   |-- alertController.js
 |   |   |   |   |-- loggerController.js
 |   |   |   |   |-- mappingController.js
 |   |   |   |-- routes
@@ -33,3 +37,64 @@
 |-- package.json
 |-- README.md
 |-- structure.txt
+
+
+Database: Logger Monitoring System
+│
+├── logger_stations
+│   └── Lưu thông tin các trạm hiển thị
+│       • station_id (PK)
+│       • display_name
+│       • lat, lng
+│       • description
+│
+├── logger_tag_mappings
+│   └── Mapping tag từ Logger sang Trạm
+│       • id (PK)
+│       • source
+│       • source_logger_id
+│       • source_tag_key
+│       • target_station_id (FK → logger_stations)
+│
+├── logger_latest
+│   └── Lưu giá trị mới nhất của từng tag
+│       • logger_id
+│       • tag_key
+│       • data_ts
+│       • value
+│       • current_ts
+│       • PK (logger_id, tag_key)
+│
+├── logger_readings
+│   └── Lưu lịch sử dữ liệu đo
+│       • id (PK)
+│       • logger_id
+│       • tag_key
+│       • data_ts
+│       • data_save
+│       • value
+│
+├── alert_thresholds
+│   └── Cấu hình cảnh báo Min/Max
+│       • id (PK)
+│       • station_id (FK → logger_stations)
+│       • tag_key
+│       • min_value
+│       • max_value
+│       • enabled
+│
+├── telegram_configs
+│   └── Cấu hình gửi cảnh báo Telegram
+│       • id (PK)
+│       • bot_token
+│       • chat_id
+│       • enabled
+│
+└── users
+    └── Quản lý người dùng hệ thống
+        • id (PK)
+        • username
+        • password_hash
+        • full_name
+        • role
+        • created_ts

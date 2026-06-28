@@ -65,9 +65,8 @@ async function initDatabase() {
         value DOUBLE PRECISION
       )
     `);
-       
 
-    // 5. Cấu hình ngưỡng Min/Max
+    // 5. Cấu hình ngưỡng Min/Max (Đã sửa kiểu dữ liệu để không lỗi FK)
     await db.query(`
       CREATE TABLE alert_thresholds (
         id SERIAL PRIMARY KEY,
@@ -76,7 +75,6 @@ async function initDatabase() {
         min_value DOUBLE PRECISION,
         max_value DOUBLE PRECISION,
         enabled INTEGER DEFAULT 1,
-        FOREIGN KEY(station_id) REFERENCES logger_stations(station_id) ON DELETE CASCADE,
         UNIQUE(station_id, tag_key)
       )
     `);

@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Cấu Hình Cảnh Báo Hệ Thống</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      font-family: Arial, sans-serif;
+      margin: 30px;
+      background-color: #f4f6f9;
+      color: #333;
+    }
+
+    .container {
+      max-width: 680px;
+      background: white;
+      padding: 28px;
+      border-radius: 10px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+      margin: 0 auto;
+    }
+
+    h2 {
+      text-align: center;
+      color: #007bff;
+      margin-bottom: 28px;
+    }
+
+    .form-group { margin-bottom: 20px; }
+
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+
+    select, input[type="number"] {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+
+    select:focus, input[type="number"]:focus {
+      border-color: #007bff;
+      outline: none;
+    }
+
+    .tag-row {
+      border: 1px solid #e0e0e0;
+      padding: 16px;
+      margin-top: 14px;
+      border-radius: 8px;
+      background: #fafafa;
+    }
+
+    .tag-row h4 {
+      margin: 0 0 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed #ddd;
+      font-size: 15px;
+    }
+
+    .grid-inputs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 12px;
+    }
+    .grid-inputs .form-group { margin-bottom: 0; }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+      user-select: none;
+    }
+    .checkbox-group input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .checkbox-group label {
+      margin: 0;
+      font-weight: normal;
+      cursor: pointer;
+    }
+
+    .btn-save {
+      background: #28a745;
+      color: white;
+      padding: 8px 22px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+    .btn-save:hover:not(:disabled) { background: #218838; }
+    .btn-save:disabled { background: #adb5bd; cursor: not-allowed; }
+
+    .tag-footer {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    .tag-save-status { font-size: 13px; font-weight: bold; }
+
+    .status {
+      margin-top: 16px;
+      padding: 11px 14px;
+      border-radius: 5px;
+      font-weight: bold;
+      text-align: center;
+      display: none;
+    }
+    .status.success { background: #d4edda; color: #155724; display: block; }
+    .status.error   { background: #f8d7da; color: #721c24; display: block; }
+    .status.info    { background: #d1ecf1; color: #0c5460; display: block; }
+
+    .section-header {
+      margin-top: 26px;
+      padding-top: 16px;
+      border-top: 2px solid #eee;
+      font-size: 16px;
+      font-weight: bold;
+      color: #444;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2>🛠️ Cấu Hình Ngưỡng Cảnh Báo</h2>
+
+  <div class="form-group">
+    <label for="loggerSelect">1. Chọn Thiết Bị (Logger ID):</label>
+    <select id="loggerSelect" onchange="onLoggerChange()">
+      <option value="">-- Đang tải danh sách logger... --</option>
+    </select>
+  </div>
+
+  <div id="tagsContainer" style="display:none;">
+    <p class="section-header">2. Danh sách Tag thuộc Logger</p>
+    <div id="tagsList"></div>
+  </div>
+
+  <div id="statusMessage" class="status"></div>
+</div>
+
+<script>
+  "use strict";
+
+  const API_BASE = window.location.origin + "/api";
+
+  const PARAMETER_NAME_MAP = {
+    level:      "Mực nước",
+    flow:       "Lưu lượng",
+    totalIndex: "Tổng lưu lượng",
+    ph:         "Độ pH",
+    tds:        "Tổng chất rắn hòa tan (TDS)",
+    no3:        "Hàm lượng Nitrat (NO₃)",
+    nh4:        "Hàm lượng Amoni (NH₄⁺)",
+    amino:      "Hàm lượng Amino"
+  };
+
+  document.addEventListener("DOMContentLoaded", loadLoggerDropdown);
+
+  // ─── Load dropdown ─────────────────────────────────────────────────────────
+
+  async function loadLoggerDropdown() {
+    const sel = document.getElementById("loggerSelect");
+    sel.innerHTML = '<option value="">-- Đang tải... --</option>';
+    sel.disabled = true;
+
+    const loggers = new Set();
+
+    try {
+      const res  = await fetch(`${API_BASE}/mappings/helpers`);
+      const body = await res.json();
+      if (body.success && body.data) {
+        const items = Array.isArray(body.data)
+          ? body.data
+          : Object.values(body.data).flat();
+        items.forEach(item => {
+          if (item?.source_logger_id) loggers.add(item.source_logger_id);
+          if (item?.logger_id)        loggers.add(item.logger_id);
+          if (typeof item === "string") loggers.add(item);
+        });
+      }
+    } catch (_) {}
+
+    if (loggers.size === 0) {
+      try {
+        const res  = await fetch(`${API_BASE}/logger/latest/grouped`);
+        const body = await res.json();
+        if (body.success && Array.isArray(body.data)) {
+          body.data.forEach(s => { if (s.station_id) loggers.add(s.station_id); });
+        }
+      } catch (_) {}
+    }
+
+    if (loggers.size === 0) loggers.add("monre_35_gs14");
+
+    sel.innerHTML = '<option value="">-- Chọn một Logger ID --</option>';
+    [...loggers].sort().forEach(id => {
+      const opt = document.createElement("option");
+      opt.value = id;
+      opt.textContent = id;
+      sel.appendChild(opt);
+    });
+    sel.disabled = false;
+    hideStatus();
+  }
+
+  // ─── Chọn logger ───────────────────────────────────────────────────────────
+
+  function onLoggerChange() {
+    const loggerId = document.getElementById("loggerSelect").value;
+    if (loggerId) {
+      loadTags(loggerId);
+    } else {
+      document.getElementById("tagsContainer").style.display = "none";
+      hideStatus();
+    }
+  }
+
+  // ─── Load tags ─────────────────────────────────────────────────────────────
+
+  async function loadTags(loggerId) {
+    showStatus("Đang tải danh sách tag...", "info");
+    document.getElementById("tagsContainer").style.display = "none";
+
+    try {
+      const res  = await fetch(`${API_BASE}/logger/${encodeURIComponent(loggerId)}/tags`);
+      const body = await res.json();
+
+      if (!body.success || !Array.isArray(body.data) || body.data.length === 0) {
+        showStatus(`Không tìm thấy tag nào cho thiết bị [${loggerId}].`, "error");
+        return;
+      }
+
+      renderTags(body.data, loggerId);
+      hideStatus();
+    } catch (err) {
+      showStatus("Lỗi kết nối API: " + err.message, "error");
+    }
+  }
+
+  // ─── Render tags ───────────────────────────────────────────────────────────
+
+  function renderTags(tags, loggerId) {
+    const container = document.getElementById("tagsList");
+    container.innerHTML = "";
+
+    tags.forEach(tag => {
+      const tagKey    = tag.tag_key;
+      const paramName = PARAMETER_NAME_MAP[tagKey] || tagKey;
+      const minVal    = tag.min_value ?? "";
+      const maxVal    = tag.max_value ?? "";
+      const isEnabled = Boolean(tag.enabled);
+
+      const div = document.createElement("div");
+      div.className = "tag-row";
+      div.id = `tag-row-${tagKey}`;
+      div.innerHTML = `
+        <h4>🏷️ <span style="color:#007bff">${paramName}</span>
+            <small style="color:#999; font-weight:normal;">(${tagKey})</small>
+        </h4>
+        <div class="grid-inputs">
+          <div class="form-group">
+            <label for="min_${tagKey}">Ngưỡng dưới (Min):</label>
+            <input type="number" id="min_${tagKey}" value="${minVal}" step="any" placeholder="Bỏ trống = không giới hạn">
+          </div>
+          <div class="form-group">
+            <label for="max_${tagKey}">Ngưỡng trên (Max):</label>
+            <input type="number" id="max_${tagKey}" value="${maxVal}" step="any" placeholder="Bỏ trống = không giới hạn">
+          </div>
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="enabled_${tagKey}" ${isEnabled ? "checked" : ""}>
+          <label for="enabled_${tagKey}">Kích hoạt gửi cảnh báo Telegram</label>
+        </div>
+        <div class="tag-footer">
+          <span class="tag-save-status" id="save-status-${tagKey}"></span>
+          <button class="btn-save" id="btn-save-${tagKey}"
+                  onclick="saveAlert('${loggerId}', '${tagKey}')">
+            💾 Lưu cấu hình
+          </button>
+        </div>
+      `;
+      container.appendChild(div);
+    });
+
+    document.getElementById("tagsContainer").style.display = "block";
+  }
+
+  // ─── Lưu cấu hình ─────────────────────────────────────────────────────────
+
+  async function saveAlert(loggerId, tagKey) {
+    const btn        = document.getElementById(`btn-save-${tagKey}`);
+    const statusSpan = document.getElementById(`save-status-${tagKey}`);
+
+    const minInput = document.getElementById(`min_${tagKey}`).value.trim();
+    const maxInput = document.getElementById(`max_${tagKey}`).value.trim();
+    const enabled  = document.getElementById(`enabled_${tagKey}`).checked;
+
+    if (minInput !== "" && maxInput !== "" && parseFloat(minInput) > parseFloat(maxInput)) {
+      setTagStatus(statusSpan, "❌ Min phải ≤ Max", "red");
+      return;
+    }
+
+    const payload = {
+      station_id: loggerId,
+      tag_key:    tagKey,
+      min_value:  minInput !== "" ? parseFloat(minInput) : null,
+      max_value:  maxInput !== "" ? parseFloat(maxInput) : null,
+      enabled
+    };
+
+    btn.disabled = true;
+    btn.textContent = "⏳ Đang lưu...";
+    setTagStatus(statusSpan, "", "");
+
+    try {
+      const res    = await fetch(`${API_BASE}/logger/alerts/config`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify(payload)
+      });
+      const result = await res.json();
+
+      if (result.success) {
+        setTagStatus(statusSpan, "✅ Đã lưu", "#155724");
+      } else {
+        setTagStatus(statusSpan, "❌ " + (result.message || "Lỗi không xác định"), "red");
+      }
+    } catch (err) {
+      setTagStatus(statusSpan, "❌ Lỗi kết nối: " + err.message, "red");
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = "💾 Lưu cấu hình";
+    }
+  }
+
+  // ─── Helpers ───────────────────────────────────────────────────────────────
+
+  function setTagStatus(el, text, color) {
+    el.textContent = text;
+    el.style.color = color;
+  }
+
+  function showStatus(text, type) {
+    const el = document.getElementById("statusMessage");
+    el.className = "status " + type;
+    el.textContent = text;
+  }
+
+  function hideStatus() {
+    const el = document.getElementById("statusMessage");
+    el.className = "status";
+    el.style.display = "none";
+    el.textContent = "";
+  }
+</script>
+</body>
+</html>

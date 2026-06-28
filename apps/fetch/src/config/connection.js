@@ -3,10 +3,6 @@
 require("dotenv").config();
 const { Pool } = require("pg");
 
-// ✅ FIX TIMEZONE TẬN GỐC:
-// Gắn options=-c timezone=Asia/Ho_Chi_Minh trực tiếp vào DATABASE_URL
-// → Timezone được ép ngay tại tầng TCP handshake với PostgreSQL server
-// → Không phụ thuộc vào event 'connect' (chỉ fire cho connection mới, không phải idle connection cũ)
 function buildConnectionString(baseUrl) {
   if (!baseUrl) throw new Error("DATABASE_URL chưa được cấu hình trong file .env");
   try {
