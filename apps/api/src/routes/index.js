@@ -21,5 +21,9 @@ router.delete("/mappings/:id", mappingController.deleteMapping);
 router.get("/logger/history", loggerController.getHistoryData);
 router.get("/logger/gauge/:station_id", loggerController.getGaugeData);
 
+
+// 🟢 ROUTE MỚI THÊM VÀO ĐÂY:
+router.get("/analytics/flow-by-license", loggerController.getFlowAnalyticsByLicense);
+
 // Xuất router ra để server.js sử dụng
 module.exports = router;

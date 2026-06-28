@@ -42,7 +42,6 @@ async function initDatabase() {
         UNIQUE(source_logger_id, source_tag_key, target_station_id)
       )
     `);
-
     // 3. Tạo bảng DỮ LIỆU GẦN NHẤT (Chuyển sang kiểu dữ liệu TIMESTAMPTZ)
     await db.query(`
       CREATE TABLE logger_latest (
@@ -66,6 +65,7 @@ async function initDatabase() {
         value DOUBLE PRECISION
       )
     `);
+       
 
     // 5. Cấu hình ngưỡng Min/Max
     await db.query(`

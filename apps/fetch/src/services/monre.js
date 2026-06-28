@@ -204,11 +204,6 @@ async function fetchMonreData() {
     }
 }
 
-// CHU KỲ 1: Gọi lại hàm fetch định kỳ mỗi 60 giây
-// setInterval(async () => {
-//     await fetchMonreData();
-// }, CONFIG.FETCH_INTERVAL_SECONDS * 1000);
-
 // CHU KỲ 2: Lưu DB lịch sử đồng loạt mỗi 5 phút
 setInterval(async () => {
     if (monreHistoryQueue.length === 0) return;

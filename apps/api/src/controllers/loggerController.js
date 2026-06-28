@@ -96,7 +96,7 @@ async function getLatestDataGrouped(req, res) {
 
 
 /**
- * 🚀 API 3: Lấy dữ liệu lịch sử phục vụ vẽ biểu đồ (Chart) - ĐÃ FIX KHỚP BẢNG logger_readings
+ * 🚀 API 3: Lấy dữ liệu lịch sử cho bảng dữ liệu TIMESTAMPTZ (+00) - FIX LỖI KHÔNG TRẢ VỀ DỮ LIỆU
  * GET /api/logger/history?station_id=...&from_date=...&to_date=...
  */
 async function getHistoryData(req, res) {
@@ -107,15 +107,19 @@ async function getHistoryData(req, res) {
   }
 
   try {
-    // 1. Lấy danh sách tag vật lý và tag ánh xạ thuộc về trạm này    
+    // 1. Lấy danh sách toàn bộ các tag hiển thị thuộc trạm này
     const mappingQuery = `
       SELECT DISTINCT 
-        source_logger_id,
-        source_tag_key AS tag_key
+        source_logger_id AS search_logger_id,
+        source_tag_key AS search_tag_key,
+        source_tag_key AS client_tag_key
       FROM logger_tag_mappings 
       WHERE target_station_id = $1
       UNION
-      SELECT DISTINCT logger_id AS source_logger_id, tag_key 
+      SELECT DISTINCT 
+        logger_id AS search_logger_id, 
+        tag_key AS search_tag_key,
+        tag_key AS client_tag_key
       FROM logger_latest 
       WHERE logger_id = $1;
     `;
@@ -126,63 +130,72 @@ async function getHistoryData(req, res) {
       return res.status(200).json({ success: true, chart_data: {} });
     }
 
-    // Khởi tạo khung mảng trống cho từng tag
+    // Khởi tạo mảng trống cho client
     mappingResult.rows.forEach(r => {
-      chartData[r.tag_key] = [];
+      chartData[r.client_tag_key] = [];
     });
 
-    // 2. Xây dựng điều kiện lọc theo Trạm nguồn và Tag tương ứng
+    // 2. Thiết lập tham số thời gian (Đưa về chuỗi timestamp thô, không kèm dấu múi giờ)
     let whereClauses = [];
     let queryParams = [];
     let paramIndex = 1;
 
+    if (from_date || to_date) {
+      // Ép về định dạng chuỗi thô YYYY-MM-DD HH:mm:ss
+      const startTs = from_date ? from_date.replace("T", " ") : "1970-01-01 00:00:00";
+      const endTs = to_date ? to_date.replace("T", " ") : "2030-12-31 23:59:59";
+      
+      queryParams.push(startTs, endTs); // $1 và $2
+      paramIndex = 3;
+    }
+
     mappingResult.rows.forEach(row => {
       whereClauses.push(`(logger_id = $${paramIndex} AND tag_key = $${paramIndex + 1})`);
-      queryParams.push(row.source_logger_id, row.tag_key);
+      queryParams.push(row.search_logger_id, row.search_tag_key);
       paramIndex += 2;
     });
 
-    // 🛠️ FIX CHÍNH: Đổi tên bảng thành 'logger_readings' theo cấu trúc thực tế của bạn
-    // Nếu có truyền from_date/to_date thì lọc theo thời gian, nếu không truyền thì lấy 100 bản ghi mới nhất để vẽ chart
     let historyQueryText = "";
     
     if (from_date || to_date) {
-      const startTs = from_date ? new Date(from_date) : new Date(Date.now() - 24 * 60 * 60 * 1000);
-      const endTs = to_date ? new Date(to_date) : new Date();
-      
-      queryParams.unshift(startTs, endTs); // Đẩy vào đầu mảng param ($1, $2)
-      
-      // Dịch chuyển index của các tham số sau tăng lên 2 đơn vị
-      whereClauses = whereClauses.map(clause => {
-        return clause.replace(/\$(\d+)/g, (match, num) => `$${parseInt(num) + 2}`);
-      });
-
+      // Dùng (data_ts AT TIME ZONE 'UTC') để đưa mốc thời gian lưu trong DB về dạng thô (TIMESTAMP)
+      // Điều này giúp loại bỏ hoàn toàn sự tự động quy đổi múi giờ của Postgres khi so sánh BETWEEN
       historyQueryText = `
-        SELECT logger_id, tag_key, value, data_ts 
+        SELECT 
+          logger_id, 
+          tag_key, 
+          value, 
+          TO_CHAR(data_ts AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS') as data_ts 
         FROM logger_readings 
-        WHERE data_ts BETWEEN $1 AND $2 AND (${whereClauses.join(" OR ")})
+        WHERE (data_ts AT TIME ZONE 'UTC') BETWEEN $1::timestamp AND $2::timestamp AND (${whereClauses.join(" OR ")})
         ORDER BY data_ts ASC;
       `;
     } else {
-      // Trường hợp xem nhanh mặc định: Lấy 100 bản ghi lịch sử gần đây nhất của các tag thuộc trạm này
       historyQueryText = `
-        SELECT logger_id, tag_key, value, data_ts 
+        SELECT 
+          logger_id, 
+          tag_key, 
+          value, 
+          TO_CHAR(data_ts AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS') as data_ts 
         FROM logger_readings 
         WHERE ${whereClauses.join(" OR ")}
         ORDER BY data_ts DESC
-        LIMIT 100;
+        LIMIT 500;
       `;
     }
 
     const historyResult = await db.query(historyQueryText, queryParams);
-    
-    // Nếu lấy mặc định LIMIT, ta đảo ngược mảng lại cho đúng thứ tự thời gian tăng dần từ trái qua phải để vẽ Chart
     const rows = from_date || to_date ? historyResult.rows : historyResult.rows.reverse();
 
+    // 3. Khớp nối dữ liệu đẩy về mảng chartData
     rows.forEach(row => {
-      if (chartData[row.tag_key]) {
-        chartData[row.tag_key].push({
-          x: row.data_ts,
+      const matchConfig = mappingResult.rows.find(m => 
+        m.search_logger_id === row.logger_id && m.search_tag_key === row.tag_key
+      );
+
+      if (matchConfig && chartData[matchConfig.client_tag_key]) {
+        chartData[matchConfig.client_tag_key].push({
+          x: row.data_ts, // Trả ra chuỗi "2026-06-28T15:35:00" khớp 100% giao diện
           y: parseFloat(row.value)
         });
       }
@@ -256,9 +269,146 @@ async function getGaugeData(req, res) {
     return res.status(500).json({ success: false, error: error.message });
   }
 }
+
+/**
+ * 🚀 API NÂNG CẤP: Tính tổng lượng flow theo nhóm Giấy phép hỗ trợ tra cứu lịch sử linh hoạt
+ * GET /api/analytics/flow-by-license?mode=default|by_day|by_month&date=YYYY-MM-DD&month=YYYY-MM
+ */
+async function getFlowAnalyticsByLicense(req, res) {
+  const { mode, date, month } = req.query;
+  const currentMode = mode || 'default';
+
+  try {
+    const LICENSE_PREFIXES = {
+      "393/gp-bnnmt 22/09/2025": "monre_393",
+      "391/gp-bnnmt 19/09/2025": "monre_391",
+      "35/gp-btnmt 15/01/2025":  "monre_35",
+      "36/gp-btnmt 15/01/2025":  "monre_36"
+    };
+
+    let queryText = "";
+    let queryParams = [];
+    let periodLabel = "Tổng quan chu kỳ hiện tại";
+
+    // XÂY DỰNG SQL ĐỘNG THEO CHẾ ĐỘ XEM
+    if (currentMode === 'by_day') {
+      // 1. Chế độ xem theo 1 ngày lịch sử cụ thể
+      const targetDay = date || new Date().toISOString().slice(0, 10);
+      periodLabel = `Báo cáo chi tiết ngày: ${targetDay}`;
+      queryParams.push(`${targetDay} 00:00:00 +07`, `${targetDay} 23:59:59 +07`);
+
+      queryText = `
+        SELECT logger_id, COALESCE(SUM(value), 0) AS total_value
+        FROM logger_readings
+        WHERE tag_key = 'flow' AND value IS NOT NULL 
+          AND data_ts BETWEEN $1::timestamptz AND $2::timestamptz
+        GROUP BY logger_id;
+      `;
+    } 
+    else if (currentMode === 'by_month') {
+      // 2. Chế độ xem theo 1 tháng lịch sử cụ thể
+      const targetMonth = month || new Date().toISOString().slice(0, 7);
+      periodLabel = `Báo cáo chi tiết tháng: ${targetMonth}`;
+      
+      const [year, mId] = targetMonth.split('-');
+      const lastDay = new Date(year, mId, 0).getDate();
+      
+      queryParams.push(`${targetMonth}-01 00:00:00 +07`, `${targetMonth}-${lastDay} 23:59:59 +07`);
+
+      queryText = `
+        SELECT logger_id, COALESCE(SUM(value), 0) AS total_value
+        FROM logger_readings
+        WHERE tag_key = 'flow' AND value IS NOT NULL 
+          AND data_ts BETWEEN $1::timestamptz AND $2::timestamptz
+        GROUP BY logger_id;
+      `;
+    } 
+    else {
+      // 3. Chế độ mặc định: Thống kê tổ hợp 4 mốc (Hôm nay, Hôm qua, Tháng này, Tháng trước)
+      queryText = `
+        WITH local_readings AS (
+          SELECT logger_id, value, (data_ts AT TIME ZONE 'Asia/Ho_Chi_Minh') AS local_ts
+          FROM logger_readings WHERE tag_key = 'flow' AND value IS NOT NULL
+        ),
+        time_flags AS (
+          SELECT logger_id, value,
+            (DATE_TRUNC('day', local_ts) = DATE_TRUNC('day', NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')) AS is_today,
+            (DATE_TRUNC('day', local_ts) = DATE_TRUNC('day', (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh') - INTERVAL '1 day')) AS is_yesterday,
+            (DATE_TRUNC('month', local_ts) = DATE_TRUNC('month', NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh')) AS is_this_month,
+            (DATE_TRUNC('month', local_ts) = DATE_TRUNC('month', (NOW() AT TIME ZONE 'Asia/Ho_Chi_Minh') - INTERVAL '1 month')) AS is_last_month
+          FROM local_readings
+        )
+        SELECT logger_id,
+          COALESCE(SUM(CASE WHEN is_today THEN value END), 0) AS total_today,
+          COALESCE(SUM(CASE WHEN is_yesterday THEN value END), 0) AS total_yesterday,
+          COALESCE(SUM(CASE WHEN is_this_month THEN value END), 0) AS total_this_month,
+          COALESCE(SUM(CASE WHEN is_last_month THEN value END), 0) AS total_last_month
+        FROM time_flags GROUP BY logger_id;
+      `;
+    }
+
+    const result = await db.query(queryText, queryParams);
+    
+    // Khởi tạo cấu trúc lưu trữ dựa theo chế độ
+    const reportStructure = {};
+    Object.keys(LICENSE_PREFIXES).forEach(groupName => {
+      reportStructure[groupName] = currentMode === 'default' 
+        ? { today: 0, yesterday: 0, this_month: 0, last_month: 0, stations: [] }
+        : { total_value: 0, stations: [] };
+    });
+    const fallbackKey = "Khác (Không thuộc nhóm trên)";
+    reportStructure[fallbackKey] = currentMode === 'default'
+      ? { today: 0, yesterday: 0, this_month: 0, last_month: 0, stations: [] }
+      : { total_value: 0, stations: [] };
+
+    // Phân nhóm gom cộng dồn dữ liệu từ DB
+    result.rows.forEach(row => {
+      let targetGroup = fallbackKey;
+      for (const [groupName, prefix] of Object.entries(LICENSE_PREFIXES)) {
+        if (row.logger_id.toLowerCase().startsWith(prefix.toLowerCase())) {
+          targetGroup = groupName;
+          break;
+        }
+      }
+
+      if (currentMode === 'default') {
+        reportStructure[targetGroup].today += parseFloat(row.total_today || 0);
+        reportStructure[targetGroup].yesterday += parseFloat(row.total_yesterday || 0);
+        reportStructure[targetGroup].this_month += parseFloat(row.total_this_month || 0);
+        reportStructure[targetGroup].last_month += parseFloat(row.total_last_month || 0);
+      } else {
+        reportStructure[targetGroup].total_value += parseFloat(row.total_value || 0);
+      }
+      reportStructure[targetGroup].stations.push(row.logger_id);
+    });
+
+    // Làm tròn dữ liệu số
+    Object.keys(reportStructure).forEach(g => {
+      if (currentMode === 'default') {
+        ['today', 'yesterday', 'this_month', 'last_month'].forEach(k => reportStructure[g][k] = Math.round(reportStructure[g][k] * 100) / 100);
+      } else {
+        reportStructure[g].total_value = Math.round(reportStructure[g].total_value * 100) / 100;
+      }
+    });
+
+    return res.status(200).json({
+      success: true,
+      period_label: periodLabel,
+      timestamp: new Date().toISOString(),
+      analytics: reportStructure
+    });
+
+  } catch (error) {
+    console.error("❌ [API Thống kê Phân tích] Lỗi:", error.message);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+}
+
+
 module.exports = {
   getLatestDataGrouped,
   getLatestDataRaw: async (req, res) => res.status(200).json({ success: true, note: "Sử dụng API grouped để xem cấu trúc chuẩn." }),
   getHistoryData,  
-  getGaugeData     
+  getGaugeData,
+  getFlowAnalyticsByLicense     
 };

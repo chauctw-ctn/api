@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT Central — Thống kê KPI Lưu lượng</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --surface-2: #1c2128;
+            --surface-3: #21262d;
+            --border: #30363d;
+            --text: #e6edf3;
+            --text-2: #8b949e;
+            --accent: #2f81f7;
+            --green: #3fb950;
+            --font: 'Inter', sans-serif;
+            --mono: 'JetBrains Mono', monospace;
+        }
+        body { font-family: var(--font); background: var(--bg); color: var(--text); padding: 24px; margin: 0; }
+        .container { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 16px; flex-wrap: wrap; gap: 16px; }
+        h1 { margin: 0; font-size: 20px; font-weight: 600; }
+        
+        /* Toolbar bộ lọc */
+        .toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        select, input { background: var(--surface-3); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 6px 10px; font-size: 13px; font-family: var(--font); outline: none; }
+        select:focus, input:focus { border-color: var(--accent); }
+        
+        .btn { padding: 7px 14px; border-radius: 6px; border: 1px solid var(--border); font-size: 13px; font-weight: 500; cursor: pointer; transition: all .15s; }
+        .btn-primary { background: var(--accent); border-color: var(--accent); color: white; }
+        .btn-success { background: #1a3628; border-color: var(--green); color: var(--green); }
+        .btn:hover { opacity: 0.9; }
+
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+        .chart-container { position: relative; height: 380px; width: 100%; }
+        
+        /* Loading State */
+        .loading { opacity: 0.4; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <div>
+            <h1>Thống kê Tổng lưu lượng theo Giấy phép</h1>
+            <div style="font-size: 12px; color: var(--text-2); margin-top: 4px;" id="update_ts">Đang tải dữ liệu...</div>
+        </div>
+        
+        <div class="toolbar">
+            <select id="report_mode" onchange="toggleReportMode()">
+                <option value="default">Mặc định (Tổng quan chu kỳ)</option>
+                <option value="by_day">Xem theo Ngày lịch sử</option>
+                <option value="by_month">Xem theo Tháng lịch sử</option>
+            </select>
+            
+            <div id="wrapper_day" style="display: none;">
+                <input type="date" id="input_day">
+            </div>
+            
+            <div id="wrapper_month" style="display: none;">
+                <input type="month" id="input_month">
+            </div>
+
+            <button class="btn btn-primary" onclick="loadAnalyticsData()">Xem kết quả</button>
+            <button class="btn btn-success" onclick="exportReportData()">Xuất báo cáo</button>
+        </div>
+    </div>
+
+    <div class="card" id="chart_card">
+        <div class="chart-container">
+            <canvas id="licenseFlowChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<script src="analytics.js"></script>
+</body>
+</html>

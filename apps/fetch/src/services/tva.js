@@ -143,15 +143,6 @@ async function fetchTVAData() {
   finally { if (dbClient) dbClient.release(); }
 }
 
-// let inFlight = false;
-// setInterval(async () => {
-//   if (inFlight) return; inFlight = true;
-//   for (let attempt = 1; attempt <= DEFAULT_TVA_CONFIG.maxRetries; attempt++) {
-//     try { await fetchTVAData(); break; } catch (error) { if (attempt < DEFAULT_TVA_CONFIG.maxRetries) await new Promise(r => setTimeout(r, DEFAULT_TVA_CONFIG.retryDelayMs)); }
-//   }
-//   inFlight = false;
-// }, DEFAULT_TVA_CONFIG.FETCH_INTERVAL_SECONDS * 1000);
-
 setInterval(async () => {
   if (tvaHistoryQueue.length === 0) return;
   const cachedItems = [...tvaHistoryQueue]; tvaHistoryQueue = [];

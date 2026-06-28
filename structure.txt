@@ -1,7 +1,9 @@
 ﻿|-- apps
 |   |-- api
 |   |   |-- public
+|   |   |   |-- index.css
 |   |   |   |-- index.html
+|   |   |   |-- index.js
 |   |   |-- src
 |   |   |   |-- config
 |   |   |   |   |-- connection.js
