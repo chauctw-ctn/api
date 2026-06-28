@@ -15,6 +15,16 @@ const pool = new Pool({
   }
 });
 
+// 🔥 FIX TẬN GỐC MÚI GIỜ: Lắng nghe sự kiện kết nối của Client
+// Ép mọi Session làm việc của Postgres với Node.js tự động chuyển dịch về múi giờ Việt Nam (+07)
+pool.on("connect", async (client) => {
+  try {
+    await client.query("SET TIME ZONE 'Asia/Ho_Chi_Minh';");
+  } catch (err) {
+    console.error("🚨 Không thể cấu hình SET TIME ZONE cho Session kết nối Postgres:", err.message);
+  }
+});
+
 function openDb() {
   // Trả về pool để dùng chung cho việc truy vấn
   return pool;

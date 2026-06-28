@@ -1,4 +1,5 @@
 "use strict";
+process.env.TZ = "Asia/Ho_Chi_Minh";
 
 if (process.env.NODE_ENV !== "production") {
   require("dotenv").config({ path: require("path").join(__dirname, "../../../.env") });

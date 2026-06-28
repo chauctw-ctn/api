@@ -1,5 +1,4 @@
 "use strict";
-// require("dotenv").config();
 const axios = require("axios");
 const cheerio = require("cheerio");
 const { openDb } = require("../config/connection");
@@ -18,43 +17,6 @@ const DEFAULT_CONFIG = {
   SAVE_DB_INTERVAL_MINUTES: Number(process.env.SCADA_SAVE_DB_INTERVAL_MINUTES) || 5
 };
 
-// ====================================================================
-// 🔍 KHỐI XÁC MINH CẤU HÌNH ENVIRONMENT (.ENV) CHO MODULE SCADA
-// ====================================================================
-(() => {
-  console.log("\n---------------------------------------------------------");
-  console.log("🕵️ [VERIFY CONFIG] Kiểm tra nguồn nạp cấu hình SCADA Nhà máy:");
-  
-  if (process.env.SCADA_USERNAME) {
-    console.log(`   🟢 USERNAME: Đang sử dụng tài khoản từ file .env -> [${process.env.SCADA_USERNAME}]`);
-  } else {
-    console.log(`   ⚠️  USERNAME: Không tìm thấy! Đang dùng fallback mặc định -> [${DEFAULT_CONFIG.username}]`);
-  }
-
-  if (process.env.SCADA_PASSWORD) {
-    console.log(`   🟢 PASSWORD: Đang sử dụng mật khẩu từ file .env -> [********]`);
-  } else {
-    console.log(`   ⚠️  PASSWORD: Không tìm thấy! Đang dùng fallback mặc định -> [********]`);
-  }
-
-  if (process.env.SCADA_URL) {
-    console.log(`   🟢 BASE URL: Đã đồng bộ động từ file .env -> [${process.env.SCADA_URL}]`);
-  } else {
-    console.log(`   ⚠️  BASE URL: Đang dùng địa chỉ IP tĩnh mặc định -> [${DEFAULT_CONFIG.baseUrl}]`);
-  }
-
-  if (process.env.SCADA_VIEW_ID) {
-    console.log(`   🟢 VIEW ID: Đã đồng bộ từ file .env -> [Màn hình ID: ${DEFAULT_CONFIG.viewId}]`);
-  } else {
-    console.log(`   ⚠️  VIEW ID: Không tìm thấy! Đang dùng fallback mặc định -> [Màn hình ID: ${DEFAULT_CONFIG.viewId}]`);
-  }
-  
-  console.log(`   ⚙️  Cấu hình mạng: Giới hạn Timeout: ${DEFAULT_CONFIG.timeoutMs}ms, Thử lại tối đa: ${DEFAULT_CONFIG.maxRetries} lần.`);
-  console.log("---------------------------------------------------------\n");
-})();
-
-// ... Toàn bộ các hàm xử lý cào dữ liệu Cheerio (Scraper), fetchScadaData() phía sau giữ nguyên ...
-
 const cnlMapping = {
   2902: ["gs4nm2", "level"], 2904: ["gs4nm2", "flow"], 2905: ["gs4nm2", "totalIndex"],
   2907: ["gs5nm1", "level"], 2909: ["gs5nm1", "flow"], 2910: ["gs5nm1", "totalIndex"],
@@ -71,17 +33,7 @@ let scadaHistoryQueue = [];
 function buildStationId(source, rawId) { return `${source}_${String(rawId).toLowerCase()}`; }
 function mapCnlToStationAndParameter(cnlNum) {
   const mapped = cnlMapping[cnlNum];
-  if (!mapped) return { station: null, parameter: null };
-  return { station: mapped[0], parameter: mapped[1] };
-}
-
-function createHttpClient(config) {
-  return axios.create({ timeout: config.timeoutMs, maxRedirects: 5, headers: { "User-Agent": "Mozilla/5.0" } });
-}
-
-function collectCookies(existing, next) {
-  const combined = [...existing, ...next];
-  return Array.from(new Set(combined.map((c) => c.split(";")[0]))).join("; ");
+  return mapped ? { station: mapped[0], parameter: mapped[1] } : { station: null, parameter: null };
 }
 
 function parseScadaValue(textValue) {
@@ -94,34 +46,39 @@ function parseScadaValue(textValue) {
 }
 
 async function loginScada(config) {
-  const client = createHttpClient(config); const loginPage = await client.get(config.loginUrl);
-  const initialCookies = loginPage.headers["set-cookie"] || []; const initialHeader = collectCookies([], initialCookies);
+  const client = axios.create({ timeout: config.timeoutMs, maxRedirects: 5, headers: { "User-Agent": "Mozilla/5.0" } });
+  const loginPage = await client.get(config.loginUrl);
+  const initialCookies = loginPage.headers["set-cookie"] || [];
+  const initialHeader = Array.from(new Set(initialCookies.map(c => c.split(";")[0]))).join("; ");
+  
   const $ = cheerio.load(loginPage.data);
   const loginData = new URLSearchParams({
-    __VIEWSTATE: $("input[name='__VIEWSTATE']").val(), __VIEWSTATEGENERATOR: $("input[name='__VIEWSTATEGENERATOR']").val() || "",
-    __EVENTVALIDATION: $("input[name='__EVENTVALIDATION']").val() || "", txtUsername: config.username, txtPassword: config.password, btnLogin: "Login"
+    __VIEWSTATE: $("input[name='__VIEWSTATE']").val(),
+    __VIEWSTATEGENERATOR: $("input[name='__VIEWSTATEGENERATOR']").val() || "",
+    __EVENTVALIDATION: $("input[name='__EVENTVALIDATION']").val() || "",
+    txtUsername: config.username, txtPassword: config.password, btnLogin: "Login"
   });
-  const loginResponse = await client.post(config.loginUrl, loginData.toString(), { headers: { "Content-Type": "application/x-www-form-urlencoded", Cookie: initialHeader, Referer: config.loginUrl } });
-  return { client, sessionCookie: collectCookies(initialCookies, loginResponse.headers["set-cookie"] || []) };
+  
+  const loginResponse = await client.post(config.loginUrl, loginData.toString(), {
+    headers: { "Content-Type": "application/x-www-form-urlencoded", Cookie: initialHeader, Referer: config.loginUrl }
+  });
+  const sessionCookie = Array.from(new Set([...initialCookies, ...(loginResponse.headers["set-cookie"] || [])].map(c => c.split(";")[0]))).join("; ");
+  return { client, sessionCookie };
 }
 
-// Hàm lấy thời gian đo / thời gian hiện hành làm tròn giây về 00
-function getFormattedTimestampRounded() {
+// 🛠️ TỐI ƯU MÚI GIỜ: Khởi tạo đối tượng thời gian chuẩn, xóa phần giây để đồng bộ
+function getVietnamTimeRounded() {
   const now = new Date();
-  const pad = (v) => String(v).padStart(2, "0");
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:00`;
-}
-
-function getRounded5MinTimestamp() {
-  const now = new Date(); const minutes = now.getMinutes(); const roundedMinutes = Math.floor(minutes / 5) * 5;
-  const pad = (v) => String(v).padStart(2, "0");
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(roundedMinutes)}:00`;
+  now.setSeconds(0, 0);
+  now.setMilliseconds(0);
+  return now;
 }
 
 async function fetchScadaData() {
-  const config = DEFAULT_CONFIG; const source = config.source;
+  const config = DEFAULT_CONFIG;
   const { client, sessionCookie } = await loginScada(config);
-  let rawData = []; const timestamp = Date.now();
+  let rawData = [];
+  const timestamp = Date.now();
   const apiUrl = `${config.baseUrl}/Scada/ClientApiSvc.svc/GetCurCnlDataExt`;
 
   try {
@@ -135,7 +92,7 @@ async function fetchScadaData() {
 
   if (!rawData || rawData.length === 0) return;
 
-  const currentFetchTs = getFormattedTimestampRounded(); // 🛠️ SCADA lấy mốc quét hiện hành làm tròn :00 cho cả 2 trường data_ts và current_ts
+  const currentFetchTs = getVietnamTimeRounded(); 
   let dbClient;
 
   try {
@@ -144,11 +101,17 @@ async function fetchScadaData() {
       const { station, parameter } = mapCnlToStationAndParameter(item.CnlNum);
       if (!station || !parameter) continue;
 
-      const stationId = buildStationId(source, String(station).toLowerCase());
+      const stationId = buildStationId(config.source, String(station).toLowerCase());
       const parsedValue = item.Text ? parseScadaValue(item.Text) : null;
       if (parsedValue === null) continue;
 
-      scadaHistoryQueue.push({ logger_id: stationId, tag_key: parameter, data_ts: currentFetchTs, value: parsedValue });
+      // Đẩy mốc thời gian dạng ISO String vào hàng đợi lưu lịch sử nhằm tránh lỗi kiểu dữ liệu hỗn hợp
+      scadaHistoryQueue.push({ 
+        logger_id: stationId, 
+        tag_key: parameter, 
+        data_ts: currentFetchTs.toISOString(), 
+        value: parsedValue 
+      });
 
       try {
         const queryLatest = `
@@ -164,28 +127,35 @@ async function fetchScadaData() {
   finally { if (dbClient) dbClient.release(); }
 }
 
-let inFlight = false;
-setInterval(async () => {
-  if (inFlight) return; inFlight = true;
-  for (let attempt = 1; attempt <= DEFAULT_CONFIG.maxRetries; attempt++) {
-    try { await fetchScadaData(); break; } catch (e) { if (attempt < DEFAULT_CONFIG.maxRetries) await new Promise(r => setTimeout(r, DEFAULT_CONFIG.retryDelayMs)); }
-  }
-  inFlight = false;
-}, DEFAULT_CONFIG.FETCH_INTERVAL_SECONDS * 1000);
+module.exports = { fetchScadaData };
 
+// Tiến trình lưu lịch sử chạy ngầm định kỳ
 setInterval(async () => {
   if (scadaHistoryQueue.length === 0) return;
-  const cachedItems = [...scadaHistoryQueue]; scadaHistoryQueue = [];
-  const serverSavedTs = getRounded5MinTimestamp();
+  const cachedItems = [...scadaHistoryQueue]; 
+  scadaHistoryQueue = [];
+  
+  const now = new Date();
+  now.setSeconds(0, 0);
+  now.setMilliseconds(0);
+  const minutes = now.getMinutes();
+  now.setMinutes(Math.floor(minutes / 5) * 5);
+  const serverSavedTs = now;
 
   const client = await db.connect();
   try {
     await client.query("BEGIN");
     const insertText = `INSERT INTO logger_readings (logger_id, tag_key, data_ts, data_save, value) VALUES ($1, $2, $3, $4, $5)`;
-    for (const item of cachedItems) { await client.query(insertText, [item.logger_id, item.tag_key, item.data_ts || serverSavedTs, serverSavedTs, item.value]); }
+    for (const item of cachedItems) { 
+      const finalDataTs = item.data_ts ? new Date(item.data_ts) : serverSavedTs;
+      await client.query(insertText, [item.logger_id, item.tag_key, finalDataTs, serverSavedTs, item.value]); 
+    }
     await client.query("COMMIT");
-  } catch (err) { await client.query("ROLLBACK"); } 
-  finally { client.release(); }
+    console.log(`[SCADA][DB] 💾 Ghi nhận thành công ${cachedItems.length} bản ghi lịch sử vào Postgres.`);
+  } catch (err) { 
+    await client.query("ROLLBACK"); 
+    console.error("❌ [SCADA][DB] Thất bại khi thực thi transaction lịch sử:", err.message);
+  } finally { 
+    client.release(); 
+  }
 }, DEFAULT_CONFIG.SAVE_DB_INTERVAL_MINUTES * 60 * 1000);
-
-module.exports = { fetchScadaData };

@@ -1,5 +1,4 @@
 "use strict";
-// require("dotenv").config();
 const mqtt = require("mqtt");
 const { openDb } = require("../config/connection");
 
@@ -8,35 +7,9 @@ const DEFAULT_CONFIG = {
   port: process.env.MQTT_PORT || "1883",
   topic: process.env.MQTT_TOPIC || "telemetry",
   source: process.env.MQTT_SOURCE || "mqtt",
-  tzOffsetMinutes: 0,
   FETCH_INTERVAL_SECONDS: Number(process.env.MQTT_FETCH_INTERVAL_SECONDS) || 60,
   SAVE_DB_INTERVAL_MINUTES: Number(process.env.MQTT_SAVE_DB_INTERVAL_MINUTES) || 5
 };
-
-// ====================================================================
-// 🔍 KHỐI XÁC MINH CẤU HÌNH ENVIRONMENT (.ENV)
-// ====================================================================
-(() => {
-  console.log("\n---------------------------------------------------------");
-  console.log("🕵️ [VERIFY CONFIG] Kiểm tra nguồn nạp cấu hình MQTT:");
-  
-  if (process.env.MQTT_HOST) {
-    console.log(`   🟢 HOST: Đang sử dụng giá trị từ file .env -> [${process.env.MQTT_HOST}]`);
-  } else {
-    console.log(`   ⚠️  HOST: Không tìm thấy biến trong .env! Đang dùng fallback mặc định -> [${DEFAULT_CONFIG.host}]`);
-  }
-
-  if (process.env.MQTT_PORT) {
-    console.log(`   🟢 PORT: Đang sử dụng giá trị từ file .env -> [${process.env.MQTT_PORT}]`);
-  } else {
-    console.log(`   ⚠️  PORT: Không tìm thấy biến trong .env! Đang dùng fallback mặc định -> [${DEFAULT_CONFIG.port}]`);
-  }
-  
-  console.log(`   🕒 Khoảng thời gian lưu DB định kỳ: ${DEFAULT_CONFIG.SAVE_DB_INTERVAL_MINUTES} phút.`);
-  console.log("---------------------------------------------------------\n");
-})();
-
-
 
 const TAG_PARAMETER_MAP = { MUCNUOC: "level", LUULUONG: "flow", TONGLUULUONG: "totalIndex" };
 
@@ -54,27 +27,28 @@ function normalizeMetricValue(value) {
   return Number.isNaN(numericValue) ? null : numericValue;
 }
 
-function formatTimestampWithOffsetRounded(ts, offsetMinutes) {
+// 🛠️ TỐI ƯU MÚI GIỜ: Kiểm tra cấu trúc chuỗi, tự động xử lý timezone
+function parseTimestampToDate(ts) {
   if (!ts) return null;
-  const parsed = new Date(String(ts).trim().replace(/([+-]\d{2})(\d{2})$/, "$1:$2"));
+  let tsStr = String(ts).trim();
+  
+  if (!tsStr.includes("Z") && !tsStr.match(/[+-]\d{2}:?\d{2}$/)) {
+    tsStr += "+07:00";
+  }
+  
+  const parsed = new Date(tsStr);
   if (Number.isNaN(parsed.getTime())) return null;
-  const adjusted = new Date(parsed.getTime() + offsetMinutes * 60 * 1000);
-  const pad = (v) => String(v).padStart(2, "0");
-  return `${adjusted.getFullYear()}-${pad(adjusted.getMonth() + 1)}-${pad(adjusted.getDate())} ${pad(adjusted.getHours())}:${pad(adjusted.getMinutes())}:00`;
+  
+  parsed.setSeconds(0, 0);
+  parsed.setMilliseconds(0);
+  return parsed;
 }
 
-function getCurrentSystemTimeRounded() {
+function getSystemDateRounded() {
   const now = new Date();
-  const pad = (v) => String(v).padStart(2, "0");
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:00`;
-}
-
-function getRounded5MinTimestamp() {
-  const now = new Date();
-  const minutes = now.getMinutes();
-  const roundedMinutes = Math.floor(minutes / 5) * 5;
-  const pad = (v) => String(v).padStart(2, "0");
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(roundedMinutes)}:00`;
+  now.setSeconds(0, 0);
+  now.setMilliseconds(0);
+  return now;
 }
 
 function parsePayloadTextSecure(text) {
@@ -96,15 +70,17 @@ setInterval(async () => {
   const processingBatch = [...messageQueue];
   messageQueue = []; 
 
-  console.log(`[MQTT][FETCH] Đúng chu kỳ ${DEFAULT_CONFIG.FETCH_INTERVAL_SECONDS}s -> Xử lý ${processingBatch.length} gói tin.`);
+  console.log(`[MQTT][FETCH] Thực thi chu kỳ xử lý ${processingBatch.length} gói tin.`);
   let client;
   try {
     client = await db.connect();
-    const currentFetchTs = getCurrentSystemTimeRounded(); 
+    const currentFetchTs = getSystemDateRounded(); 
 
     for (const payload of processingBatch) {
       if (!payload || !Array.isArray(payload.d)) continue;
-      const formattedDataTs = formatTimestampWithOffsetRounded(payload.ts, DEFAULT_CONFIG.tzOffsetMinutes) || payload.ts;
+      
+      let formattedDataTs = parseTimestampToDate(payload.ts);
+      if (!formattedDataTs) formattedDataTs = currentFetchTs;
 
       for (const item of payload.d) {
         let value = item.value;
@@ -133,7 +109,12 @@ setInterval(async () => {
         const rawId = deviceCode.replace(/[^a-zA-Z0-9]+/g, "").toLowerCase();
         const stationId = buildStationId(DEFAULT_CONFIG.source, rawId);
 
-        mqttHistoryQueue.push({ logger_id: stationId, tag_key: parameter, data_ts: formattedDataTs, value: parsedValue });
+        mqttHistoryQueue.push({ 
+          logger_id: stationId, 
+          tag_key: parameter, 
+          data_ts: formattedDataTs.toISOString(), 
+          value: parsedValue 
+        });
 
         try {
           const queryText = `
@@ -146,7 +127,7 @@ setInterval(async () => {
         } catch (err) { console.error(`❌ [MQTT] Lỗi lưu bảng logger_latest:`, err.message); }
       }
     }
-  } catch (error) { console.error("❌ [MQTT][BATCH] Lỗi chu kỳ 1:", error.message); } 
+  } catch (error) { console.error("❌ [MQTT][BATCH] Lỗi xử lý dữ liệu:", error.message); } 
   finally { if (client) client.release(); }
 }, DEFAULT_CONFIG.FETCH_INTERVAL_SECONDS * 1000);
 
@@ -155,23 +136,32 @@ setInterval(async () => {
   if (mqttHistoryQueue.length === 0) return;
   const cachedItems = [...mqttHistoryQueue];
   mqttHistoryQueue = [];
-  const serverSavedTs = getRounded5MinTimestamp();
+  
+  const now = new Date();
+  now.setSeconds(0, 0);
+  now.setMilliseconds(0);
+  const minutes = now.getMinutes();
+  now.setMinutes(Math.floor(minutes / 5) * 5);
+  const serverSavedTs = now;
 
   const client = await db.connect();
   try {
     await client.query("BEGIN");
     const insertText = `INSERT INTO logger_readings (logger_id, tag_key, data_ts, data_save, value) VALUES ($1, $2, $3, $4, $5)`;
     for (const item of cachedItems) {
-      await client.query(insertText, [item.logger_id, item.tag_key, item.data_ts || serverSavedTs, serverSavedTs, item.value]);
+      const finalDataTs = item.data_ts ? new Date(item.data_ts) : serverSavedTs;
+      await client.query(insertText, [item.logger_id, item.tag_key, finalDataTs, serverSavedTs, item.value]);
     }
     await client.query("COMMIT");
-  } catch (err) { await client.query("ROLLBACK"); console.error("❌ [MQTT][DB] Lỗi lịch sử:", err.message); } 
-  finally { client.release(); }
+    console.log(`[MQTT][DB] 💾 Ghi nhận thành công ${cachedItems.length} bản ghi lịch sử vào Postgres.`);
+  } catch (err) { 
+    await client.query("ROLLBACK"); 
+    console.error("❌ [MQTT][DB] Thất bại khi thực thi transaction lịch sử:", err.message); 
+  } finally { 
+    client.release(); 
+  }
 }, DEFAULT_CONFIG.SAVE_DB_INTERVAL_MINUTES * 60 * 1000);
 
-/**
- * 🛠️ ĐỒNG BỘ EXPORT: Bọc tiến trình khởi chạy kết nối Broker vào hàm hành động
- */
 function connectMQTT() {
   const client = mqtt.connect(`mqtt://${DEFAULT_CONFIG.host}:${DEFAULT_CONFIG.port}`, { 
     clean: true, 
@@ -192,5 +182,4 @@ function connectMQTT() {
   return client;
 }
 
-// Xuất bản hàm đồng bộ cấu trúc với 3 module kia
 module.exports = { connectMQTT };

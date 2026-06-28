@@ -1,4 +1,5 @@
 "use strict";
+process.env.TZ = "Asia/Ho_Chi_Minh";
 
 // ====================================================================
 // ⚙️ 1. CẤU HÌNH ĐỌC FILE .ENV TẬP TRUNG TỪ THƯ MỤC GỐC DỰ ÁN
@@ -20,7 +21,7 @@ const monreClient = require("./services/monre");
 const tvaClient = require("./services/tva");
 
 /**
- * Hàm helper trả về chuỗi thời gian hiện tại định dạng: [HH:MM:SS DD/MM/YYYY]
+ * Hàm helper trả về chuỗi thời gian hiện tại định dạng: [HH:MM:SS DD/MM/YYYY] phục vụ console.log
  */
 function getTimestamp() {
   const now = new Date();
@@ -34,29 +35,38 @@ function getTimestamp() {
 }
 
 /**
- * 📊 HÀM WRAPPER TRUNG GIAN: Kiểm tra, log thời gian fetch và tính toán chu kỳ tiếp theo
- * @param {string} taskName - Tên dịch vụ (SCADA Nhà máy, TVA Web Scraper, Portal IoT MONRE...)
+ * 📊 HÀM WRAPPER TRUNG GIAN: Biến đổi thành vòng lặp đệ quy thực thụ để kiểm soát chu kỳ tập trung
+ * @param {string} taskName - Tên dịch vụ
  * @param {Function} actionFunc - Hàm thực thi tác vụ fetch gốc từ module dịch vụ
- * @param {number} intervalSeconds - Số giây chu kỳ đọc trực tiếp từ CONFIG môi trường
+ * @param {number} intervalSeconds - Số giây chu kỳ đọc từ CONFIG môi trường
  */
 async function runTaskWithLog(taskName, actionFunc, intervalSeconds) {
-  console.log(`${getTimestamp()} 🔄 [${taskName}] Bắt đầu chu kỳ nạp/fetch dữ liệu...`);
-  
-  const startTime = Date.now();
-  try {
-    // Kích hoạt hàm cào/fetch dữ liệu gốc bất đồng bộ
-    await actionFunc();
+  const executeCycle = async () => {
+    console.log(`${getTimestamp()} 🔄 [${taskName}] Bắt đầu chu kỳ nạp/fetch dữ liệu...`);
+    const startTime = Date.now();
     
-    // Tính toán chính xác thời gian chu kỳ tiếp theo sẽ diễn ra dựa vào số giây interval
-    const nextRunTime = new Date(startTime + (intervalSeconds * 1000));
-    const nextTimeString = nextRunTime.toTimeString().split(" ")[0];
-    const nextDateString = nextRunTime.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
+    try {
+      // Kích hoạt hàm cào/fetch dữ liệu gốc bất đồng bộ
+      await actionFunc();
+      
+      // Tính toán chính xác thời gian chu kỳ tiếp theo dựa vào số giây interval
+      const nextRunTime = new Date(Date.now() + (intervalSeconds * 1000));
+      const nextTimeString = nextRunTime.toTimeString().split(" ")[0];
+      const nextDateString = nextRunTime.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
 
-    console.log(`${getTimestamp()} 🔌 [${taskName}] Hoàn thành fetch dữ liệu thành công.`);
-    console.log(`               ➔ ⏱️ Chu kỳ tiếp theo dự kiến: [${nextTimeString} ${nextDateString}] (Chạy sau ${intervalSeconds} giây nữa)\n`);
-  } catch (err) {
-    console.error(`${getTimestamp()} ❌ [${taskName}] Gặp lỗi khi fetch dữ liệu:`, err.message || err);
-  }
+      console.log(`${getTimestamp()} 🔌 [${taskName}] Hoàn thành fetch dữ liệu thành công.`);
+      console.log(`               ➔ ⏱️ Chu kỳ tiếp theo dự kiến: [${nextTimeString} ${nextDateString}] (Chạy sau ${intervalSeconds} giây nữa)\n`);
+    } catch (err) {
+      console.error(`${getTimestamp()} ❌ [${taskName}] Gặp lỗi khi fetch dữ liệu:`, err.message || err);
+    }
+    
+    // 🛠️ FIX CỐT LÕI: Sử dụng setTimeout đệ quy để tự động lặp lại chu kỳ mới liên tục.
+    // Dùng cơ chế này an toàn hơn setInterval vì tránh được việc các request "gối đầu/chồng chéo" lên nhau nếu mạng bị nghẽn.
+    setTimeout(executeCycle, intervalSeconds * 1000);
+  };
+
+  // Kích hoạt chu kỳ đầu tiên ngay lập tức khi khởi động hệ thống
+  await executeCycle();
 }
 
 // ====================================================================
@@ -86,66 +96,37 @@ async function bootstrapBackend() {
   // Kích hoạt luồng Socket Realtime: MQTT Broker kết nối lắng nghe liên tục qua cổng TCP
   console.log(`${getTimestamp()} [WORKER ACTIVE] -> Module MQTT Client đang lắng nghe...`);
 
-  const tasks = [];
-
   if (typeof mqttClient.connectMQTT === "function") {
-    // MQTT lắng nghe dữ liệu đẩy (Push) liên tục, không tính theo chu kỳ cào bốc nên đẩy chạy trực tiếp
-    tasks.push({ name: "MQTT Broker Listener", action: async () => mqttClient.connectMQTT() });
+    // MQTT chạy lắng nghe sự kiện push chủ động nên không bọc qua chu kỳ kéo (pull) cố định
+    mqttClient.connectMQTT();
+    console.log(`${getTimestamp()}    ✅ [MQTT Broker Listener] Khởi động tiến trình lắng nghe thành công.`);
   }
   
-  // Kiểm tra cấu hình môi trường & Bọc luồng SCADA Nhà máy
+  // Kiểm tra cấu hình môi trường & Kích hoạt vòng lặp SCADA Nhà máy
   const scadaFunc = scadaClient.fetchScadaData || scadaClient.fetchAndPrintScadaData;
   if (typeof scadaFunc === "function") {
-    // 🔍 Xác minh nhận diện cấu hình: Ưu tiên lấy biến từ .env tổng
     const scadaInterval = Number(process.env.SCADA_FETCH_INTERVAL_SECONDS) || 60;
-    tasks.push({ 
-      name: "SCADA Nhà máy", 
-      action: () => runTaskWithLog("SCADA Nhà máy", scadaFunc, scadaInterval) 
-    });
+    runTaskWithLog("SCADA Nhà máy", scadaFunc, scadaInterval);
   } else {
     console.warn(`${getTimestamp()} ⚠️ [SCADA WARNING]: Không tìm thấy hàm fetch dữ liệu trong module scada.js`);
   }
 
-  // Kiểm tra cấu hình môi trường & Bọc luồng TVA Web Scraper
+  // Kiểm tra cấu hình môi trường & Kích hoạt vòng lặp TVA Web Scraper
   const tvaFunc = tvaClient.fetchTVAData;
   if (typeof tvaFunc === "function") {
-    // 🔍 Xác minh nhận diện cấu hình: Ưu tiên lấy biến từ .env tổng
     const tvaInterval = Number(process.env.TVA_FETCH_INTERVAL_SECONDS) || 60;
-    tasks.push({ 
-      name: "TVA Web Scraper", 
-      action: () => runTaskWithLog("TVA Web Scraper", tvaFunc, tvaInterval) 
-    });
+    runTaskWithLog("TVA Web Scraper", tvaFunc, tvaInterval);
   } else {
     console.warn(`${getTimestamp()} ⚠️ [TVA WARNING]: Không tìm thấy hàm fetchTVAData trong module tva.js`);
   }
 
-  // Kiểm tra cấu hình môi trường & Bọc luồng Portal IoT MONRE
+  // Kiểm tra cấu hình môi trường & Kích hoạt vòng lặp Portal IoT MONRE
   const monreFunc = monreClient.fetchMonreData;
   if (typeof monreFunc === "function") {
-    // 🔍 Xác minh nhận diện cấu hình: Ưu tiên lấy biến từ .env tổng
     const monreInterval = Number(process.env.MONRE_FETCH_INTERVAL_SECONDS) || 60;
-    tasks.push({ 
-      name: "Portal IoT MONRE", 
-      action: () => runTaskWithLog("Portal IoT MONRE", monreFunc, monreInterval) 
-    });
+    runTaskWithLog("Portal IoT MONRE", monreFunc, monreInterval);
   } else {
     console.warn(`${getTimestamp()} ⚠️ [MONRE WARNING]: Không tìm thấy hàm fetchMonreData trong module monre.js`);
-  }
-
-  // Thực thi kích hoạt đồng loạt song song các luồng cào dữ liệu qua Promise.allSettled
-  if (tasks.length > 0) {
-    console.log(`${getTimestamp()} ⚡ Kích hoạt đồng loạt song song ${tasks.length} module hệ thống...`);
-    
-    const results = await Promise.allSettled(tasks.map(task => task.action()));
-    
-    results.forEach((result, idx) => {
-      const taskName = tasks[idx].name;
-      if (result.status === "fulfilled") {
-        console.log(`${getTimestamp()}    ✅ [${taskName}] Khởi động và gán tiến trình chạy nền thành công.`);
-      } else {
-        console.error(`${getTimestamp()}    ❌ [${taskName}] Khởi động thất bại:`, result.reason?.message || result.reason);
-      }
-    });
   }
 
   console.log("\n======================================================================");
@@ -170,8 +151,6 @@ bootstrapBackend();
 // ====================================================================
 // 📡 4. HEALTH CHECK SERVER (TỰ ĐỘNG CHUYỂN CỔNG TRÁNH XUNG ĐỘT)
 // ====================================================================
-// Nếu chạy Local (chưa cấu hình biến PORT môi trường Cloud), tự động đẩy sang cổng 3001 
-// để tránh đè lên cổng 3000 của REST API Dashboard Server.
 const PORT = process.env.PORT || 3001; 
 
 const server = http.createServer((req, res) => {

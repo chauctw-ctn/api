@@ -1,5 +1,4 @@
 "use strict";
-// require("dotenv").config();
 const axios = require('axios');
 const { openDb } = require("../config/connection");
 
@@ -7,7 +6,6 @@ const { openDb } = require("../config/connection");
 const CONFIG = {
     USERNAME: process.env.MONRE_USERNAME || 'capnuoccamau',
     PASSWORD: process.env.MONRE_PASSWORD || 'Qu@nTr@c2121',
-    // 🟢 TỐI ƯU: Đọc động từ .env, nếu không có mới dùng địa chỉ portal mặc định
     PORTAL_URL: process.env.MONRE_PORTAL_URL || "https://iot.monre.gov.vn/portal/sharing/rest/generateToken",
     DATA_URL: process.env.MONRE_DATA_URL || "https://iot.monre.gov.vn/server/rest/services/Hosted/TNN_BIGDATA_EVENT_NEW/FeatureServer/0/query",
     SOURCE: "monre", 
@@ -16,7 +14,7 @@ const CONFIG = {
 };
 
 // ====================================================================
-// 🔍 KHỒI XÁC MINH CẤU HÌNH ENVIRONMENT (.ENV) CHO MODULE MONRE
+// 🔍 KHỐI XÁC MINH CẤU HÌNH ENVIRONMENT (.ENV) CHO MODULE MONRE
 // ====================================================================
 (() => {
   console.log("\n---------------------------------------------------------");
@@ -44,10 +42,8 @@ const CONFIG = {
   console.log("---------------------------------------------------------\n");
 })();
 
-// Bộ lọc đơn vị quản lý trên API MONRE
 const PROJECT_FILTER = "(congtrinh='CAPNUOCCAMAU1' OR congtrinh='CONGTYCOPHANCAPNUOCC' OR congtrinh='NHAMAYCAPNUOCSO1' OR congtrinh='CAPNUOCCAMAUSO2')";
 
-// Ánh xạ công trình theo giấy phép để chuẩn hóa tên trạm
 const PERMIT_MAPPING = {
     "393/gp-bnnmt 22/09/2025": ["NHAMAYCAPNUOCSO1"],
     "391/gp-bnnmt 19/09/2025": ["CONGTYCOPHANCAPNUOCC"],
@@ -55,7 +51,6 @@ const PERMIT_MAPPING = {
     "36/gp-btnmt 15/01/2025": ["CAPNUOCCAMAUSO2"]
 };
 
-// 🗺️ BỘ ĐỐI CHIẾU THAM SỐ
 const PARAMETER_MAP = {
     "MUCNUOC": "level", "H": "level", "LUULUONG": "flow", "Q": "flow", "TONGLUULUONG": "totalIndex", "V": "totalIndex",
     "PH": "ph", "TDS": "tds", "NO3": "no3", "NH4+": "nh4", "NH4": "nh4", "AMONI": "nh4"  
@@ -78,28 +73,32 @@ function getCleanPermitNumber(projectName) {
     return "UNKNOWN";
 }
 
-// Hàm format và làm tròn giây về 00 cho thời gian đo của thiết bị
-function formatTimestampRounded(ts) {
+// 🛠️ TỐI ƯU: Hàm parse và làm tròn giây về 00 trả về một đối tượng Date chuẩn cho TIMESTAMPTZ
+function parseTimestampToDateRounded(ts) {
     if (!ts) return null;
     const date = new Date(Number(ts));
     if (Number.isNaN(date.getTime())) return null;
-    const pad = (v) => String(v).padStart(2, "0");
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:00`;
+    date.setSeconds(0, 0);
+    date.setMilliseconds(0);
+    return date;
 }
 
-// Hàm lấy thời gian hiện tại của hệ thống làm tròn giây về 00
-function getCurrentSystemTimeRounded() {
+// 🛠️ TỐI ƯU: Hàm lấy thời gian hiện tại của hệ thống làm tròn giây về 00 dưới dạng Date
+function getSystemDateRounded() {
     const now = new Date();
-    const pad = (v) => String(v).padStart(2, "0");
-    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:00`;
+    now.setSeconds(0, 0);
+    now.setMilliseconds(0);
+    return now;
 }
 
-function getRounded5MinTimestamp() {
+// 🛠️ TỐI ƯU: Hàm lấy thời gian làm tròn chu kỳ 5 phút trả về Date
+function getRounded5MinDate() {
     const now = new Date();
+    now.setSeconds(0, 0);
+    now.setMilliseconds(0);
     const minutes = now.getMinutes();
-    const roundedMinutes = Math.floor(minutes / 5) * 5;
-    const pad = (v) => String(v).padStart(2, "0");
-    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(roundedMinutes)}:00`;
+    now.setMinutes(Math.floor(minutes / 5) * 5);
+    return now;
 }
 
 function normalizeMetricValue(value) {
@@ -129,15 +128,12 @@ async function getToken() {
     }
 }
 
-/**
- * 🛠️ ĐỊNH NGHĨA HÀM FETCH ĐỘC LẬP ĐỂ SỬA LỖI ReferenceError
- */
 async function fetchMonreData() {
     console.log(`\n[MONRE][FETCH] Bắt đầu chu kỳ quét API (${CONFIG.FETCH_INTERVAL_SECONDS}s)...`);
     let client;
     try {
         const token = await getToken();
-        const currentFetchTs = getCurrentSystemTimeRounded(); 
+        const currentFetchTs = getSystemDateRounded(); 
         
         const params = { f: 'json', where: PROJECT_FILTER, outFields: '*', orderByFields: 'thoigiannhan DESC', resultRecordCount: 5000, token: token };
         const response = await axios.get(CONFIG.DATA_URL, { params, timeout: 25000 });
@@ -176,7 +172,7 @@ async function fetchMonreData() {
                 const parsedValue = normalizeMetricValue(targetAttr.giatri);
                 if (parsedValue === null) continue;
 
-                const formattedDataTs = formatTimestampRounded(targetAttr.thoigiando); 
+                const formattedDataTs = parseTimestampToDateRounded(targetAttr.thoigiando); 
 
                 finalizedDataBatch.push({ stationId: mappedStationName, tagKey: standardParam, dataTs: formattedDataTs, value: parsedValue });
             }
@@ -206,16 +202,16 @@ async function fetchMonreData() {
 }
 
 // CHU KỲ 1: Gọi lại hàm fetch định kỳ mỗi 60 giây
-setInterval(async () => {
-    await fetchMonreData();
-}, CONFIG.FETCH_INTERVAL_SECONDS * 1000);
+// setInterval(async () => {
+//     await fetchMonreData();
+// }, CONFIG.FETCH_INTERVAL_SECONDS * 1000);
 
 // CHU KỲ 2: Lưu DB lịch sử đồng loạt mỗi 5 phút
 setInterval(async () => {
     if (monreHistoryQueue.length === 0) return;
     const cachedItems = [...monreHistoryQueue];
     monreHistoryQueue = [];
-    const serverSavedTs = getRounded5MinTimestamp();
+    const serverSavedTs = getRounded5MinDate();
 
     const client = await db.connect();
     try {
@@ -233,5 +229,4 @@ setInterval(async () => {
     }
 }, CONFIG.SAVE_DB_INTERVAL_MINUTES * 60 * 1000);
 
-// Xuất bản hàm ra ngoài một cách hợp lệ
 module.exports = { fetchMonreData };

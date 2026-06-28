@@ -34,10 +34,9 @@ async function getLatestDataGrouped(req, res) {
         s_target.lng AS target_lng,
         s_target.description AS target_desc
       FROM logger_latest l
-      -- Khớp chính xác Tuyệt đối 1-1: hardware_tag = 'tva_gs01:flow'
       LEFT JOIN logger_tag_mappings m ON 
-        m.hardware_tag = CONCAT(l.logger_id, ':', l.tag_key)
-        AND m.parameter_key = l.tag_key
+        m.source_logger_id = l.logger_id
+        AND m.source_tag_key = l.tag_key
       LEFT JOIN logger_stations s_orig ON s_orig.station_id = l.logger_id
       LEFT JOIN logger_stations s_target ON s_target.station_id = m.target_station_id;
     `;
@@ -108,11 +107,11 @@ async function getHistoryData(req, res) {
   }
 
   try {
-    // 1. Lấy danh sách tag vật lý và tag ánh xạ thuộc về trạm này
+    // 1. Lấy danh sách tag vật lý và tag ánh xạ thuộc về trạm này    
     const mappingQuery = `
       SELECT DISTINCT 
-        SPLIT_PART(hardware_tag, ':', 1) AS source_logger_id,
-        parameter_key AS tag_key
+        source_logger_id,
+        source_tag_key AS tag_key
       FROM logger_tag_mappings 
       WHERE target_station_id = $1
       UNION

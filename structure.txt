@@ -1,0 +1,33 @@
+﻿|-- apps
+|   |-- api
+|   |   |-- public
+|   |   |   |-- index.html
+|   |   |-- src
+|   |   |   |-- config
+|   |   |   |   |-- connection.js
+|   |   |   |-- controllers
+|   |   |   |   |-- loggerController.js
+|   |   |   |   |-- mappingController.js
+|   |   |   |-- routes
+|   |   |   |   |-- index.js
+|   |   |   |-- server.js
+|   |   |-- package.json
+|   |-- fetch
+|   |   |-- src
+|   |   |   |-- config
+|   |   |   |   |-- connection.js
+|   |   |   |-- services
+|   |   |   |   |-- monre.js
+|   |   |   |   |-- mqtt.js
+|   |   |   |   |-- scada.js
+|   |   |   |   |-- tva.js
+|   |   |   |-- app.js
+|   |   |   |-- init.js
+|   |   |-- package.json
+|-- .env
+|-- .gitignore
+|-- app.js
+|-- package-lock.json
+|-- package.json
+|-- README.md
+|-- structure.txt

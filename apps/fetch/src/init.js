@@ -1,13 +1,14 @@
 "use strict";
 
-const { openDb } = require("./connection");
-
+// Trỏ đúng vào cấu hình kết nối từ thư mục config
+const { openDb } = require("./config/connection");
 const db = openDb();
 
 async function initDatabase() {
   console.log("🛠 Khởi động quá trình dọn sạch và làm mới Database trên PostgreSQL...");
 
   try {
+    // Xóa theo thứ tự để tránh xung đột ràng buộc khóa ngoại (Foreign Key)
     await db.query("DROP TABLE IF EXISTS alert_thresholds CASCADE");
     await db.query("DROP TABLE IF EXISTS logger_tag_mappings CASCADE");
     await db.query("DROP TABLE IF EXISTS logger_stations CASCADE");
@@ -18,10 +19,10 @@ async function initDatabase() {
 
     console.log("🗑 Đã xóa sạch cấu trúc dữ liệu và các bảng cũ.");
 
-    // Tạo bảng TRẠM HIỂN THỊ
+    // 1. Tạo bảng TRẠM HIỂN THỊ
     await db.query(`
       CREATE TABLE logger_stations (
-        station_id VARCHAR(255) PRIMARY KEY,
+        station_id VARCHAR(100) PRIMARY KEY,
         display_name VARCHAR(255) NOT NULL,
         lat DOUBLE PRECISION,
         lng DOUBLE PRECISION,
@@ -29,48 +30,48 @@ async function initDatabase() {
       )
     `);
 
-    // Tạo bảng MAPPING TAG
+    // 2. Tạo bảng MAPPING TAG (Đã tách phân rã các trường nguồn để JOIN siêu tốc)
     await db.query(`
       CREATE TABLE logger_tag_mappings (
         id SERIAL PRIMARY KEY,
-        source VARCHAR(100) NOT NULL,
-        hardware_tag VARCHAR(255) NOT NULL,
-        parameter_key VARCHAR(100) NOT NULL,
-        target_station_id VARCHAR(255) NOT NULL,
+        source VARCHAR(50) NOT NULL,
+        source_logger_id VARCHAR(100) NOT NULL,
+        source_tag_key VARCHAR(100) NOT NULL,
+        target_station_id VARCHAR(100) NOT NULL,
         FOREIGN KEY (target_station_id) REFERENCES logger_stations(station_id) ON DELETE CASCADE,
-        UNIQUE(source, hardware_tag, parameter_key)
+        UNIQUE(source_logger_id, source_tag_key, target_station_id)
       )
     `);
 
-    // Tạo bảng DỮ LIỆU GẦN NHẤT    
+    // 3. Tạo bảng DỮ LIỆU GẦN NHẤT (Chuyển sang kiểu dữ liệu TIMESTAMPTZ)
     await db.query(`
       CREATE TABLE logger_latest (
-        logger_id VARCHAR(255) NOT NULL,
+        logger_id VARCHAR(100) NOT NULL,
         tag_key VARCHAR(100) NOT NULL,
-        data_ts VARCHAR(50) NOT NULL,
+        data_ts TIMESTAMPTZ NOT NULL,
         value DOUBLE PRECISION,
-        current_ts VARCHAR(50) NOT NULL, 
+        current_ts TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP, 
         PRIMARY KEY (logger_id, tag_key)
       )
     `);
 
-    // 🛠️ SỬA LỖI TẠI ĐÂY: Thêm cột data_save vào bảng DỮ LIỆU LỊCH SỬ
+    // 4. Tạo bảng DỮ LIỆU LỊCH SỬ (Sử dụng BIGSERIAL tránh tràn số và TIMESTAMPTZ)
     await db.query(`
       CREATE TABLE logger_readings (
-        id SERIAL PRIMARY KEY,
-        logger_id VARCHAR(255) NOT NULL,
+        id BIGSERIAL PRIMARY KEY,
+        logger_id VARCHAR(100) NOT NULL,
         tag_key VARCHAR(100) NOT NULL,
-        data_ts VARCHAR(50) NOT NULL,
-        data_save VARCHAR(50) NOT NULL,
+        data_ts TIMESTAMPTZ NOT NULL,
+        data_save TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         value DOUBLE PRECISION
       )
     `);
 
-    // Cấu hình ngưỡng Min/Max
+    // 5. Cấu hình ngưỡng Min/Max
     await db.query(`
       CREATE TABLE alert_thresholds (
         id SERIAL PRIMARY KEY,
-        station_id VARCHAR(255) NOT NULL,
+        station_id VARCHAR(100) NOT NULL,
         tag_key VARCHAR(100) NOT NULL,
         min_value DOUBLE PRECISION,
         max_value DOUBLE PRECISION,
@@ -80,7 +81,7 @@ async function initDatabase() {
       )
     `);
 
-    // Cấu hình Telegram
+    // 6. Cấu hình Telegram
     await db.query(`
       CREATE TABLE telegram_configs (
         id SERIAL PRIMARY KEY,
@@ -91,7 +92,7 @@ async function initDatabase() {
     `);
     await db.query("INSERT INTO telegram_configs (id, bot_token, chat_id, enabled) VALUES (1, '', '', 0)");
 
-    // Quản lý tài khoản User
+    // 7. Quản lý tài khoản User
     await db.query(`
       CREATE TABLE users (
         id SERIAL PRIMARY KEY,
@@ -99,20 +100,22 @@ async function initDatabase() {
         password_hash TEXT NOT NULL,
         full_name VARCHAR(255),
         role VARCHAR(50) DEFAULT 'operator',
-        created_ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_ts TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
-    // ==================== KHỞI TẠO CHỈ MỤC (INDEXES) ====================
+    // ==================== KHỞI TẠO CHỈ MỤC (INDEXES) CHIẾN LƯỢC ====================
+    
+    // Composite Index: Tối ưu tuyệt đối cho hàm getHistoryData khi vẽ Chart (Lọc theo Trạm -> Thẻ -> Thời gian giảm dần)
     await db.query(`
-      CREATE INDEX IF NOT EXISTS idx_logger_latest_lookup 
-      ON logger_latest (logger_id, tag_key, current_ts);
+      CREATE INDEX IF NOT EXISTS idx_readings_query 
+      ON logger_readings (logger_id, tag_key, data_ts DESC);
     `);
 
-    // 🛠️ SỬA LỖI TẠI ĐÂY: Cập nhật chỉ mục chứa cả data_save để tăng tốc tìm kiếm lịch sử chu kỳ
+    // Index hỗ trợ tìm kiếm mapping trạm ảo nhanh hơn
     await db.query(`
-      CREATE INDEX IF NOT EXISTS idx_history_lookup 
-      ON logger_readings (logger_id, tag_key, data_ts, data_save);
+      CREATE INDEX IF NOT EXISTS idx_mappings_lookup 
+      ON logger_tag_mappings (target_station_id);
     `);
 
     console.log("✅ Cấu trúc DB Postgres hoàn toàn trống rỗng và Chỉ mục đã khởi tạo thành công!");

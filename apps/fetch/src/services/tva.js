@@ -1,5 +1,4 @@
 "use strict";
-// require("dotenv").config();
 const axios = require("axios");
 const cheerio = require("cheerio");
 const { openDb } = require("../config/connection");
@@ -39,27 +38,38 @@ function normalizeNumber(value) {
   const asNumber = Number(cleaned); return Number.isNaN(asNumber) ? null : asNumber;
 }
 
-// 🛠️ SỬA ĐỔI: Hàm parse thời gian đo thiết bị từ Text của Web bóp cứng phần giây về :00
-function parseUpdateTimeRounded(value) {
+// 🛠️ TỐI ƯU: Khớp bóc tách chuỗi thời gian Web thô chuyển thành đối tượng Date nguyên bản (:00)
+function parseUpdateTimeToDateRounded(value) {
   if (!value) return null;
   const cleaned = String(value).trim();
-  const match = cleaned.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+  const match = cleaned.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/);
   if (!match) return null;
-  const [, day, month, year, hours = "0", minutes = "0"] = match;
+  
+  const [, day, month, year, hours = 0, minutes = 0] = match;
   const pad = (v) => String(v).padStart(2, "0");
-  return `${year}-${pad(month)}-${pad(day)} ${pad(hours)}:${pad(minutes)}:00`;
+  
+  // Tạo chuỗi định dạng ISO chuẩn có gắn đuôi +07:00 của Việt Nam
+  const isoString = `${year}-${pad(month)}-${pad(day)}T${pad(hours)}:${pad(minutes)}:00+07:00`;
+  return new Date(isoString);
 }
 
-// 🛠️ SỬA ĐỔI: Hàm format dự phòng / lấy thời gian hiện tại lúc fetch hệ thống bóp cứng giây về :00
-function getCurrentSystemTimeRounded(date = new Date()) {
-  const pad = (v) => String(v).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:00`;
+// 🛠️ TỐI ƯU: Trả về Object Date hệ thống làm tròn giây về :00
+function getSystemDateRounded() {
+  const now = new Date();
+  now.setSeconds(0, 0);
+  now.setMilliseconds(0);
+  return now;
 }
 
-function getRounded5MinTimestamp() {
-  const now = new Date(); const minutes = now.getMinutes(); const roundedMinutes = Math.floor(minutes / 5) * 5;
-  const pad = (v) => String(v).padStart(2, "0");
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(roundedMinutes)}:00`;
+// 🛠️ TỐI ƯU: Trả về Object Date phân chu kỳ 5 phút
+function getRounded5MinDate() {
+  const now = new Date(); 
+  now.setSeconds(0, 0);
+  now.setMilliseconds(0);
+  const minutes = now.getMinutes(); 
+  const roundedMinutes = Math.floor(minutes / 5) * 5;
+  now.setMinutes(roundedMinutes);
+  return now;
 }
 
 function normalizeStationId(name) {
@@ -88,7 +98,7 @@ async function fetchTVAData() {
   const res = await client.get(config.baseUrl, { headers: { Cookie: cookieHeader } });
   const $ = cheerio.load(res.data);
   
-  const currentFetchTs = getCurrentSystemTimeRounded(); // 🛠️ Mốc thời gian lúc quét Web TVA (:00)
+  const currentFetchTs = getSystemDateRounded(); 
   const segments = $(".segmentData").toArray();
   let dbClient;
 
@@ -99,7 +109,7 @@ async function fetchTVAData() {
       const updateTime = $(segment).find(".headerNow").first().text().replace(/Thoi\s*diem:|Thời\s*điểm:/gi, "").trim();
 
       const stationId = buildStationId(source, normalizeStationId(stationName));
-      const ts = parseUpdateTimeRounded(updateTime) || currentFetchTs; // 🛠️ Mốc thời gian đo thiết bị thô thọc (:00)
+      const ts = parseUpdateTimeToDateRounded(updateTime) || currentFetchTs; 
 
       const rows = $(segment).find(".left .table .row").toArray();
       for (const row of rows) {
@@ -127,19 +137,19 @@ async function fetchTVAData() {
   finally { if (dbClient) dbClient.release(); }
 }
 
-let inFlight = false;
-setInterval(async () => {
-  if (inFlight) return; inFlight = true;
-  for (let attempt = 1; attempt <= DEFAULT_TVA_CONFIG.maxRetries; attempt++) {
-    try { await fetchTVAData(); break; } catch (error) { if (attempt < DEFAULT_TVA_CONFIG.maxRetries) await new Promise(r => setTimeout(r, DEFAULT_TVA_CONFIG.retryDelayMs)); }
-  }
-  inFlight = false;
-}, DEFAULT_TVA_CONFIG.FETCH_INTERVAL_SECONDS * 1000);
+// let inFlight = false;
+// setInterval(async () => {
+//   if (inFlight) return; inFlight = true;
+//   for (let attempt = 1; attempt <= DEFAULT_TVA_CONFIG.maxRetries; attempt++) {
+//     try { await fetchTVAData(); break; } catch (error) { if (attempt < DEFAULT_TVA_CONFIG.maxRetries) await new Promise(r => setTimeout(r, DEFAULT_TVA_CONFIG.retryDelayMs)); }
+//   }
+//   inFlight = false;
+// }, DEFAULT_TVA_CONFIG.FETCH_INTERVAL_SECONDS * 1000);
 
 setInterval(async () => {
   if (tvaHistoryQueue.length === 0) return;
   const cachedItems = [...tvaHistoryQueue]; tvaHistoryQueue = [];
-  const serverSavedTs = getRounded5MinTimestamp();
+  const serverSavedTs = getRounded5MinDate();
   const client = await db.connect();
   try {
     await client.query("BEGIN");

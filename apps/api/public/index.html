@@ -223,7 +223,7 @@
             position: relative;
             overflow: hidden;
         }
-        .gauge-tile::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--accent); }
+        .gauge-tile::with-decoration { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--accent); }
         .gauge-key { font-family: var(--mono); font-size: 11px; color: var(--text-3); margin-bottom: 6px; }
         .gauge-value { font-size: 26px; font-weight: 600; color: var(--text); line-height: 1; }
         .gauge-unit { font-size: 11px; color: var(--text-3); margin-top: 4px; }
@@ -290,108 +290,50 @@
 
         /* ── Responsive — Mobile ────────────────────────────────── */
         @media (max-width: 768px) {
-            /* Topbar thu gọn */
             .topbar { padding: 0 14px; gap: 8px; height: 50px; }
             .topbar-logo { font-size: 14px; }
             .topbar-logo .dot { width: 7px; height: 7px; }
             .topbar-subtitle { display: none; }
-
-            /* Layout chuyển sang 1 cột, chiều cao tự do */
-            .page {
-                grid-template-columns: 1fr;
-                height: auto;
-                overflow: visible;
-                padding-bottom: 70px; /* chỗ cho bottom nav */
-            }
-
-            /* Sidebar ẩn, thay bằng drawer kéo xuống */
+            .page { grid-template-columns: 1fr; height: auto; overflow: visible; padding-bottom: 70px; }
             .sidebar {
-                display: none;
-                position: fixed;
-                top: 50px;
-                left: 0; right: 0; bottom: 0;
-                z-index: 200;
-                overflow-y: auto;
-                border-right: none;
-                border-top: 1px solid var(--border);
+                display: none; position: fixed; top: 50px; left: 0; right: 0; bottom: 0;
+                z-index: 200; overflow-y: auto; border-right: none; border-top: 1px solid var(--border);
             }
             .sidebar.open { display: flex; }
-
-            /* Main chiếm toàn bộ */
-            .main {
-                padding: 14px;
-                gap: 14px;
-                overflow: visible;
-                height: auto;
-            }
-
-            /* Gauge tiles nhỏ hơn */
+            .main { padding: 14px; gap: 14px; overflow: visible; height: auto; }
             .gauge-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
             .gauge-value { font-size: 20px; }
-
-            /* Chart thấp hơn trên mobile */
             .chart-wrap { height: 240px; }
-
-            /* Mapping 1 cột */
             .mapping-grid { grid-template-columns: 1fr; }
-
-            /* Date row xuống 1 cột */
             .date-row { grid-template-columns: 1fr; }
-
-            /* Card body padding nhỏ hơn */
             .card-body { padding: 12px; }
             .card-header { padding: 10px 14px; }
-
-            /* Bottom nav bar */
-            .bottom-nav {
-                display: flex !important;
-            }
-
-            /* Tabs trong sidebar ẩn vì dùng bottom nav */
+            .bottom-nav { display: flex !important; }
             .sidebar .tabs { display: none; }
             #sidebar-monitor, #sidebar-mapping { display: block !important; }
         }
 
         /* ── Bottom Navigation Bar (mobile only) ───────────────── */
         .bottom-nav {
-            display: none;
-            position: fixed;
-            bottom: 0; left: 0; right: 0;
-            height: 60px;
-            background: var(--surface);
-            border-top: 1px solid var(--border);
-            z-index: 300;
-            align-items: stretch;
+            display: none; position: fixed; bottom: 0; left: 0; right: 0; height: 60px;
+            background: var(--surface); border-top: 1px solid var(--border); z-index: 300; align-items: stretch;
         }
         .bottom-nav-btn {
-            flex: 1;
-            background: transparent;
-            border: none;
-            color: var(--text-3);
-            font-family: var(--font);
-            font-size: 11px;
-            font-weight: 500;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
-            cursor: pointer;
-            transition: color .15s, background .15s;
+            flex: 1; background: transparent; border: none; color: var(--text-3); font-family: var(--font);
+            font-size: 11px; font-weight: 500; display: flex; flex-direction: column; align-items: center;
+            justify-content: center; gap: 4px; cursor: pointer; transition: color .15s, background .15s;
             border-right: 1px solid var(--border);
         }
         .bottom-nav-btn:last-child { border-right: none; }
         .bottom-nav-btn.active { color: var(--accent); background: var(--accent-lo); }
         .bottom-nav-btn svg { width: 20px; height: 20px; }
 
-        /* ── Responsive — Tablet ─────────────────────────────────── */
         @media (min-width: 769px) and (max-width: 1100px) {
             .page { grid-template-columns: 240px 1fr; }
             .gauge-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
             .chart-wrap { height: 280px; }
         }
 
-        /* ── PC: đảm bảo main scroll đúng ───────────────────────── */
         @media (min-width: 769px) {
             .page { height: calc(100vh - 56px); overflow: hidden; }
             .sidebar { overflow-y: auto; }
@@ -401,10 +343,8 @@
 </head>
 <body>
 
-<!-- Overlay for mobile sidebar -->
 <div id="sidebar-overlay" onclick="closeMobileSidebar()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:190;"></div>
 
-<!-- ── Topbar ─────────────────────────────────────────────────────────── -->
 <header class="topbar">
     <div class="topbar-logo">
         <span class="dot"></span>
@@ -415,13 +355,10 @@
     <span class="topbar-badge" id="connection-badge">● LIVE</span>
 </header>
 
-<!-- ── Page layout ────────────────────────────────────────────────────── -->
 <div class="page">
 
-    <!-- ── Sidebar ───────────────────────────────────────────────────── -->
     <aside class="sidebar" id="sidebar">
 
-        <!-- Tab switch -->
         <div class="sidebar-section">
             <div class="tabs">
                 <button class="tab-btn active" onclick="switchTab('monitor')">Giám sát</button>
@@ -429,7 +366,6 @@
             </div>
         </div>
 
-        <!-- Monitor controls -->
         <div id="sidebar-monitor">
             <div class="sidebar-section">
                 <p class="section-label">Trạm giám sát</p>
@@ -468,7 +404,6 @@
             </div>
         </div>
 
-        <!-- Mapping controls -->
         <div id="sidebar-mapping" style="display:none;">
             <div class="sidebar-section">
                 <p class="section-label">Trạm đích</p>
@@ -488,13 +423,10 @@
 
     </aside>
 
-    <!-- ── Main content ───────────────────────────────────────────────── -->
     <main class="main">
 
-        <!-- Monitor panel -->
         <div id="panel-monitor" class="tab-panel active">
 
-            <!-- Gauge row -->
             <div class="card" id="gauge_card">
                 <div class="card-header">
                     <div>
@@ -510,7 +442,6 @@
                 </div>
             </div>
 
-            <!-- Chart -->
             <div class="card" id="chart_card">
                 <div class="card-header">
                     <div>
@@ -527,11 +458,9 @@
 
         </div>
 
-        <!-- Mapping panel -->
         <div id="panel-mapping" class="tab-panel">
             <div class="mapping-grid">
 
-                <!-- Target station tags -->
                 <div class="card">
                     <div class="card-header">
                         <div>
@@ -550,7 +479,6 @@
                     </div>
                 </div>
 
-                <!-- Source station tags -->
                 <div class="card">
                     <div class="card-header">
                         <div>
@@ -576,6 +504,7 @@
 </div>
 
 <script>
+    // Cấu hình trục nhận dữ liệu REST API
     // const API_BASE_URL = "http://localhost:3000";
     const API_BASE_URL = "https://iot-central-api.onrender.com";
 
@@ -583,17 +512,24 @@
     let chartInstance = null;
     let currentChartRawData = null;
 
-    // ── Init ────────────────────────────────────────────────────────────
+    // ── Khởi tạo ────────────────────────────────────────────────────────────
     window.onload = async function () {
+        // 🔥 FIX TRIỆT ĐỂ LỆCH GIỜ Ô CHỌN: Tính toán bù trừ timezoneOffset cục bộ tại Việt Nam
         const now = new Date();
         const yesterday = new Date(Date.now() - 24 * 3600 * 1000);
-        document.getElementById('to_date').value = now.toISOString().slice(0, 16);
-        document.getElementById('from_date').value = yesterday.toISOString().slice(0, 16);
+        
+        const offsetMs = now.getTimezoneOffset() * 60000;
+        const localNowISO = new Date(now.getTime() - offsetMs).toISOString().slice(0, 16);
+        const localYesterdayISO = new Date(yesterday.getTime() - offsetMs).toISOString().slice(0, 16);
+
+        document.getElementById('to_date').value = localNowISO;
+        document.getElementById('from_date').value = localYesterdayISO;
+        
         await fetchInitialHelpers();
         initEmptyChart();
     };
 
-    // ── Tab switching ───────────────────────────────────────────────────
+    // ── Chuyển đổi Menu điều hướng ───────────────────────────────────────
     function switchTab(tab) {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.textContent.trim() === (tab === 'monitor' ? 'Giám sát' : 'Ánh xạ')));
         document.getElementById('panel-monitor').classList.toggle('active', tab === 'monitor');
@@ -602,7 +538,7 @@
         document.getElementById('sidebar-mapping').style.display = tab === 'mapping' ? '' : 'none';
     }
 
-    // ── Helpers ─────────────────────────────────────────────────────────
+    // ── Tải dữ liệu Helpers đổ vào Dropdown ──────────────────────────────
     async function fetchInitialHelpers() {
         try {
             const res = await fetch(`${API_BASE_URL}/api/mappings/helpers`);
@@ -634,10 +570,10 @@
             });
             if (savedSrc) srcSel.value = savedSrc;
 
-        } catch (e) { console.error('Lỗi tải helpers:', e); }
+        } catch (e) { console.error('Lỗi tải dropdown helpers:', e); }
     }
 
-    // ── Target station tags ──────────────────────────────────────────────
+    // ── Tải danh sách tag hiện tại của trạm đích ──────────────────────────
     async function loadTargetStationTags() {
         const stationId = document.getElementById('target_station_id').value;
         const container = document.getElementById('target_tags_container');
@@ -678,7 +614,7 @@
         } catch (e) { console.error('Lỗi tải tags trạm đích:', e); }
     }
 
-    // ── Source station tags ──────────────────────────────────────────────
+    // ── Tải danh sách tag vật lý của trạm nguồn ──────────────────────────
     function loadSourceStationTags() {
         const srcId     = document.getElementById('source_logger_id').value;
         const container = document.getElementById('source_tags_container');
@@ -712,7 +648,7 @@
         addBtn.style.display = 'block';
     }
 
-    // ── Add mappings ─────────────────────────────────────────────────────
+    // ── Tạo liên kết ánh xạ ảo mới ───────────────────────────────────────
     async function addSelectedTagsToTarget() {
         const targetId = document.getElementById('target_station_id').value;
         const sourceId = document.getElementById('source_logger_id').value;
@@ -733,10 +669,10 @@
             await fetchInitialHelpers();
             await loadTargetStationTags();
             loadSourceStationTags();
-        } catch (e) { console.error('Lỗi thêm ánh xạ:', e); }
+        } catch (e) { console.error('Lỗi lưu cấu hình ánh xạ:', e); }
     }
 
-    // ── Delete mappings ──────────────────────────────────────────────────
+    // ── Xóa bỏ liên kết ánh xạ ảo ────────────────────────────────────────
     async function deleteSelectedMappings() {
         const targetId = document.getElementById('target_station_id').value;
         const checked  = document.querySelectorAll('.chk-target-delete:checked');
@@ -751,10 +687,10 @@
             }
             await fetchInitialHelpers();
             loadTargetStationTags();
-        } catch (e) { console.error('Lỗi xóa ánh xạ:', e); }
+        } catch (e) { console.error('Lỗi hủy bỏ ánh xạ:', e); }
     }
 
-    // ── Station change → load tag checkboxes ────────────────────────────
+    // ── Đổi trạm giám sát trên Sidebar ───────────────────────────────────
     async function onStationChange() {
         const stationId = document.getElementById('station_selector').value;
         const wrapper   = document.getElementById('tag_checkbox_wrapper');
@@ -781,10 +717,10 @@
             } else {
                 wrapper.innerHTML = '<div class="state-empty" style="color:var(--red);">Trạm không có thẻ tag nào</div>';
             }
-        } catch (e) { console.error('Lỗi tải tag filter:', e); }
+        } catch (e) { console.error('Lỗi tải danh sách bộ lọc tag:', e); }
     }
 
-    // ── Empty chart ───────────────────────────────────────────────────────
+    // ── Khởi tạo khung biểu đồ Chart.js trống ───────────────────────────
     function initEmptyChart() {
         const ctx = document.getElementById('iotHistoryChart').getContext('2d');
         Chart.defaults.color = '#8b949e';
@@ -801,28 +737,22 @@
                         labels: { font: { family: "'JetBrains Mono', monospace", size: 11 }, padding: 16, boxWidth: 10, boxHeight: 2 }
                     },
                     tooltip: {
-                        backgroundColor: '#1c2128',
-                        borderColor: '#30363d',
-                        borderWidth: 1,
-                        titleColor: '#e6edf3',
-                        bodyColor: '#8b949e',
+                        backgroundColor: '#1c2128', borderColor: '#30363d', borderWidth: 1,
+                        titleColor: '#e6edf3', bodyColor: '#8b949e',
                         titleFont: { family: "'JetBrains Mono', monospace", size: 11 },
                         bodyFont:  { family: "'JetBrains Mono', monospace", size: 11 },
-                        padding: 10,
-                        cornerRadius: 8
+                        padding: 10, cornerRadius: 8
                     }
                 },
                 scales: {
                     x: {
                         type: 'time',
                         time: { unit: 'hour', displayFormats: { hour: 'HH:mm dd/MM' } },
-                        title: { display: false },
                         grid: { color: '#21262d' },
                         ticks: { font: { family: "'JetBrains Mono', monospace", size: 10 }, maxTicksLimit: 8 }
                     },
                     y: {
                         beginAtZero: true,
-                        title: { display: false },
                         grid: { color: '#21262d' },
                         ticks: { font: { family: "'JetBrains Mono', monospace", size: 10 } }
                     }
@@ -831,7 +761,7 @@
         });
     }
 
-    // ── Fetch gauge + history ─────────────────────────────────────────────
+    // ── Truy vấn nạp đồng thời dữ liệu tức thời và lịch sử ──────────────
     async function queryChartAndGaugeData() {
         const stationId = document.getElementById('station_selector').value;
         if (!stationId) return;
@@ -844,7 +774,7 @@
         document.getElementById('chart_card').classList.add('loading');
         dot.className = 'status-dot idle';
 
-        // Gauge
+        // 📊 ĐỒNG BỘ 1: Xử lý khối hiển thị Gauge giá trị tức thời
         try {
             const res  = await fetch(`${API_BASE_URL}/api/logger/gauge/${stationId}`);
             const json = await res.json();
@@ -873,10 +803,10 @@
             } else {
                 wrap.innerHTML = '<div class="state-empty" style="grid-column:1/-1;">Không có dữ liệu tức thời</div>';
             }
-        } catch (e) { console.error('Lỗi gauge:', e); }
+        } catch (e) { console.error('Lỗi nạp thông số Gauge:', e); }
         finally { document.getElementById('gauge_card').classList.remove('loading'); }
 
-        // History
+        // 📊 ĐỒNG BỘ 2: Xử lý khối dựng Biểu đồ lịch sử
         try {
             let url = `${API_BASE_URL}/api/logger/history?station_id=${stationId}`;
             if (fromDate) url += `&from_date=${new Date(fromDate).toISOString()}`;
@@ -895,11 +825,11 @@
                 currentChartRawData = json.chart_data;
                 renderChartDatasetsOnly();
             }
-        } catch (e) { console.error('Lỗi history:', e); }
+        } catch (e) { console.error('Lỗi dựng đồ thị lịch sử:', e); }
         finally { document.getElementById('chart_card').classList.remove('loading'); }
     }
 
-    // ── Render chart datasets ─────────────────────────────────────────────
+    // ── Lọc và vẽ các Dataset được Checkbox đánh dấu lên Chart ──────────
     function renderChartDatasetsOnly() {
         if (!currentChartRawData || !chartInstance) return;
 
@@ -928,7 +858,7 @@
         chartInstance.update();
     }
 </script>
-<!-- ── Bottom Nav (mobile only) ─────────────────────────────── -->
+
 <nav class="bottom-nav" id="bottom-nav">
     <button class="bottom-nav-btn active" id="bnav-monitor" onclick="mobileTab('monitor')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
