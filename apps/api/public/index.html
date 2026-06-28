@@ -18,7 +18,6 @@
             --surface-2: #1c2128;
             --surface-3: #21262d;
             --border:    #30363d;
-            --border-hi: #484f58;
             --text:      #e6edf3;
             --text-2:    #8b949e;
             --text-3:    #6e7681;
@@ -32,10 +31,8 @@
             --red:       #f85149;
             --red-bg:    #3d1515;
             --purple:    #a371f7;
-            --purple-bg: #2d1f5e;
             --radius:    8px;
             --radius-lg: 12px;
-            --gap:       20px;
             --font:      'Inter', system-ui, sans-serif;
             --mono:      'JetBrains Mono', 'Fira Code', monospace;
         }
@@ -62,40 +59,34 @@
             top: 0;
             z-index: 100;
         }
-        .topbar-logo {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-weight: 600;
-            font-size: 15px;
-            color: var(--text);
-        }
+        .topbar-logo { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; }
         .topbar-logo .dot {
             width: 8px; height: 8px;
-            background: var(--green);
-            border-radius: 50%;
+            background: var(--green); border-radius: 50%;
             box-shadow: 0 0 0 3px rgba(63,185,80,.2);
             animation: pulse 2s infinite;
         }
         @keyframes pulse {
-            0%, 100% { box-shadow: 0 0 0 3px rgba(63,185,80,.2); }
-            50%       { box-shadow: 0 0 0 6px rgba(63,185,80,.05); }
+            0%,100% { box-shadow: 0 0 0 3px rgba(63,185,80,.2); }
+            50%      { box-shadow: 0 0 0 6px rgba(63,185,80,.05); }
         }
         .topbar-sep { flex: 1; }
         .topbar-badge {
-            font-size: 11px; font-weight: 500;
-            padding: 3px 10px;
-            background: var(--accent-lo);
-            color: var(--accent);
-            border-radius: 20px;
-            border: 1px solid var(--accent-bg);
+            font-size: 11px; font-weight: 500; padding: 3px 10px;
+            background: var(--accent-lo); color: var(--accent);
+            border-radius: 20px; border: 1px solid var(--accent-bg);
             font-family: var(--mono);
         }
 
-        /* ── Layout shell ───────────────────────────────────────── */
-        .page { display: grid; grid-template-columns: 300px 1fr; gap: 0; height: calc(100vh - 56px); overflow: hidden; }
+        /* ── Desktop layout: sidebar kẹp trái ───────────────────── */
+        .page {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            height: calc(100vh - 56px);
+            overflow: hidden;
+        }
 
-        /* ── Sidebar ────────────────────────────────────────────── */
+        /* ── Sidebar (desktop: cột trái cố định) ────────────────── */
         .sidebar {
             background: var(--surface);
             border-right: 1px solid var(--border);
@@ -106,37 +97,24 @@
         .sidebar-section { padding: 16px; border-bottom: 1px solid var(--border); }
         .sidebar-section:last-child { border-bottom: none; }
         .section-label {
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--text-3);
-            letter-spacing: .08em;
-            text-transform: uppercase;
-            margin-bottom: 10px;
+            font-size: 11px; font-weight: 600; color: var(--text-3);
+            letter-spacing: .08em; text-transform: uppercase; margin-bottom: 10px;
         }
 
-        /* ── Main content ───────────────────────────────────────── */
+        /* ── Main ────────────────────────────────────────────────── */
         .main { overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 20px; }
 
-        /* ── Tabs ───────────────────────────────────────────────── */
+        /* ── Tabs (sidebar desktop) ──────────────────────────────── */
         .tabs {
-            display: flex;
-            gap: 2px;
-            background: var(--surface-3);
-            border-radius: var(--radius);
-            padding: 3px;
-            width: fit-content;
+            display: flex; gap: 2px;
+            background: var(--surface-3); border-radius: var(--radius);
+            padding: 3px; width: fit-content;
         }
         .tab-btn {
-            padding: 6px 16px;
-            border-radius: 6px;
-            border: none;
-            background: transparent;
-            color: var(--text-2);
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all .15s;
-            font-family: var(--font);
+            padding: 6px 16px; border-radius: 6px; border: none;
+            background: transparent; color: var(--text-2);
+            font-size: 13px; font-weight: 500; cursor: pointer;
+            transition: all .15s; font-family: var(--font);
         }
         .tab-btn.active { background: var(--surface-2); color: var(--text); }
         .tab-btn:hover:not(.active) { color: var(--text); }
@@ -144,35 +122,26 @@
         .tab-panel { display: none; flex-direction: column; gap: 20px; }
         .tab-panel.active { display: flex; }
 
-        /* ── Form controls ──────────────────────────────────────── */
+        /* ── Form controls ───────────────────────────────────────── */
         label.field-label { font-size: 12px; font-weight: 500; color: var(--text-2); display: block; margin-bottom: 6px; }
         select, input[type="datetime-local"] {
-            width: 100%;
-            background: var(--surface-3);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            color: var(--text);
-            font-family: var(--font);
-            font-size: 13px;
-            padding: 8px 10px;
-            outline: none;
-            cursor: pointer;
-            transition: border-color .15s;
-            appearance: none;
-            -webkit-appearance: none;
+            width: 100%; background: var(--surface-3); border: 1px solid var(--border);
+            border-radius: var(--radius); color: var(--text); font-family: var(--font);
+            font-size: 13px; padding: 8px 10px; outline: none; cursor: pointer;
+            transition: border-color .15s; appearance: none; -webkit-appearance: none;
         }
-        select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b949e' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
+        select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b949e' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px;
+        }
         select:focus, input:focus { border-color: var(--accent); }
         select option { background: var(--surface-2); }
 
         .btn {
             display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-            width: 100%; padding: 8px 14px;
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            font-size: 13px; font-weight: 500;
-            cursor: pointer; transition: all .15s;
-            font-family: var(--font);
+            width: 100%; padding: 8px 14px; border: 1px solid var(--border);
+            border-radius: var(--radius); font-size: 13px; font-weight: 500;
+            cursor: pointer; transition: all .15s; font-family: var(--font);
         }
         .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
         .btn-primary:hover { background: #388bfd; }
@@ -180,170 +149,173 @@
         .btn-success:hover { background: #1f4a30; }
         .btn-danger  { background: var(--red-bg); border-color: var(--red); color: var(--red); }
         .btn-danger:hover  { background: #4d1a1a; }
-        .btn-ghost { background: transparent; color: var(--text-2); }
-        .btn-ghost:hover { background: var(--surface-3); color: var(--text); }
         .btn[disabled] { opacity: .4; cursor: not-allowed; }
 
-        /* ── Tag checkboxes ─────────────────────────────────────── */
+        /* ── Tag checkboxes ──────────────────────────────────────── */
         .tag-checks { max-height: 140px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
         .tag-checks::-webkit-scrollbar { width: 4px; }
-        .tag-checks::-webkit-scrollbar-track { background: transparent; }
         .tag-checks::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
         .check-item { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 6px; cursor: pointer; transition: background .12s; }
         .check-item:hover { background: var(--surface-3); }
         .check-item input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
         .check-item span { font-size: 12px; color: var(--text-2); font-family: var(--mono); }
 
-        /* ── Card ───────────────────────────────────────────────── */
-        .card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            overflow: hidden;
-        }
-        .card-header {
-            padding: 14px 18px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        .card-title { font-size: 13px; font-weight: 600; color: var(--text); }
+        /* ── Card ────────────────────────────────────────────────── */
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+        .card-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+        .card-title { font-size: 13px; font-weight: 600; }
         .card-subtitle { font-size: 12px; color: var(--text-3); margin-top: 1px; }
         .card-body { padding: 18px; }
 
-        /* ── Gauge grid ─────────────────────────────────────────── */
+        /* ── Gauge grid ──────────────────────────────────────────── */
         .gauge-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
         .gauge-tile {
-            background: var(--surface-2);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 14px;
-            position: relative;
-            overflow: hidden;
+            background: var(--surface-2); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 14px; position: relative; overflow: hidden;
         }
-        .gauge-tile::with-decoration { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--accent); }
+        .gauge-tile::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--accent); }
         .gauge-key { font-family: var(--mono); font-size: 11px; color: var(--text-3); margin-bottom: 6px; }
-        .gauge-value { font-size: 26px; font-weight: 600; color: var(--text); line-height: 1; }
-        .gauge-unit { font-size: 11px; color: var(--text-3); margin-top: 4px; }
-        .gauge-range { font-size: 11px; color: var(--text-3); font-family: var(--mono); }
+        .gauge-value { font-size: 26px; font-weight: 600; line-height: 1; }
+        .gauge-unit, .gauge-range { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+        .gauge-range { font-family: var(--mono); }
         .gauge-bar { background: var(--surface-3); height: 3px; border-radius: 2px; overflow: hidden; margin-top: 10px; }
-        .gauge-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--purple)); border-radius: 2px; transition: width .5s ease; }
+        .gauge-fill { height: 100%; border-radius: 2px; transition: width .5s ease; }
 
-        /* ── Chart area ─────────────────────────────────────────── */
+        /* ── Chart ───────────────────────────────────────────────── */
         .chart-wrap { height: 340px; position: relative; }
 
-        /* ── Tag list (mapping) ─────────────────────────────────── */
+        /* ── Tag list (mapping) ──────────────────────────────────── */
         .tag-list { max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
         .tag-list::-webkit-scrollbar { width: 4px; }
         .tag-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
         .tag-row {
             display: flex; align-items: center; justify-content: space-between;
-            padding: 8px 12px;
-            background: var(--surface-3);
-            border-radius: var(--radius);
-            border: 1px solid transparent;
-            transition: border-color .12s;
+            padding: 8px 12px; background: var(--surface-3);
+            border-radius: var(--radius); border: 1px solid transparent; transition: border-color .12s;
         }
         .tag-row:hover { border-color: var(--border); }
         .tag-row-left { display: flex; align-items: center; gap: 8px; }
-        .tag-key { font-family: var(--mono); font-size: 12px; color: var(--text); }
+        .tag-key { font-family: var(--mono); font-size: 12px; }
         .tag-origin { font-size: 11px; color: var(--text-3); }
-
-        .pill {
-            font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 20px;
-            font-family: var(--mono); white-space: nowrap;
-        }
-        .pill-native  { background: var(--green-bg); color: var(--green); border: 1px solid #2a6635; }
+        .pill { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 20px; font-family: var(--mono); white-space: nowrap; }
+        .pill-native { background: var(--green-bg); color: var(--green); border: 1px solid #2a6635; }
         .pill-mapped  { background: var(--amber-bg); color: var(--amber); border: 1px solid #5a4015; }
-
         .tag-row input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--red); cursor: pointer; }
         .tag-row input[type="checkbox"].chk-source-add { accent-color: var(--green); }
 
-        /* ── Mapping layout ─────────────────────────────────────── */
+        /* ── Mapping layout ──────────────────────────────────────── */
         .mapping-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 
-        /* ── Empty / loading states ─────────────────────────────── */
-        .state-empty {
-            text-align: center; padding: 32px 16px;
-            color: var(--text-3); font-size: 12px; font-style: italic;
-        }
+        /* ── States ──────────────────────────────────────────────── */
+        .state-empty { text-align: center; padding: 32px 16px; color: var(--text-3); font-size: 12px; font-style: italic; }
         .loading { opacity: .5; pointer-events: none; }
-
-        /* ── Status dot ─────────────────────────────────────────── */
         .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
         .status-dot.live { background: var(--green); }
         .status-dot.idle { background: var(--text-3); }
 
-        /* ── Date row ───────────────────────────────────────────── */
-        .date-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        /* ── Bottom nav (mobile only, hidden on desktop) ─────────── */
+        .bottom-nav { display: none; }
 
-        /* ── Divider ────────────────────────────────────────────── */
-        .divider { height: 1px; background: var(--border); }
-
-        /* ── Scrollbars for main ────────────────────────────────── */
+        /* ── Scrollbars ──────────────────────────────────────────── */
         .main::-webkit-scrollbar, .sidebar::-webkit-scrollbar { width: 6px; }
         .main::-webkit-scrollbar-track, .sidebar::-webkit-scrollbar-track { background: transparent; }
         .main::-webkit-scrollbar-thumb, .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
-        /* ── Responsive — Mobile ────────────────────────────────── */
-        @media (max-width: 768px) {
-            .topbar { padding: 0 14px; gap: 8px; height: 50px; }
-            .topbar-logo { font-size: 14px; }
-            .topbar-logo .dot { width: 7px; height: 7px; }
-            .topbar-subtitle { display: none; }
-            .page { grid-template-columns: 1fr; height: auto; overflow: visible; padding-bottom: 70px; }
-            .sidebar {
-                display: none; position: fixed; top: 50px; left: 0; right: 0; bottom: 0;
-                z-index: 200; overflow-y: auto; border-right: none; border-top: 1px solid var(--border);
-            }
-            .sidebar.open { display: flex; }
-            .main { padding: 14px; gap: 14px; overflow: visible; height: auto; }
-            .gauge-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
-            .gauge-value { font-size: 20px; }
-            .chart-wrap { height: 240px; }
-            .mapping-grid { grid-template-columns: 1fr; }
-            .date-row { grid-template-columns: 1fr; }
-            .card-body { padding: 12px; }
-            .card-header { padding: 10px 14px; }
-            .bottom-nav { display: flex !important; }
-            .sidebar .tabs { display: none; }
-            #sidebar-monitor, #sidebar-mapping { display: block !important; }
-        }
-
-        /* ── Bottom Navigation Bar (mobile only) ───────────────── */
-        .bottom-nav {
-            display: none; position: fixed; bottom: 0; left: 0; right: 0; height: 60px;
-            background: var(--surface); border-top: 1px solid var(--border); z-index: 300; align-items: stretch;
-        }
-        .bottom-nav-btn {
-            flex: 1; background: transparent; border: none; color: var(--text-3); font-family: var(--font);
-            font-size: 11px; font-weight: 500; display: flex; flex-direction: column; align-items: center;
-            justify-content: center; gap: 4px; cursor: pointer; transition: color .15s, background .15s;
-            border-right: 1px solid var(--border);
-        }
-        .bottom-nav-btn:last-child { border-right: none; }
-        .bottom-nav-btn.active { color: var(--accent); background: var(--accent-lo); }
-        .bottom-nav-btn svg { width: 20px; height: 20px; }
-
+        /* ── Tablet ──────────────────────────────────────────────── */
         @media (min-width: 769px) and (max-width: 1100px) {
             .page { grid-template-columns: 240px 1fr; }
             .gauge-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
             .chart-wrap { height: 280px; }
         }
 
-        @media (min-width: 769px) {
-            .page { height: calc(100vh - 56px); overflow: hidden; }
-            .sidebar { overflow-y: auto; }
-            .main { overflow-y: auto; height: 100%; }
+        /* ════════════════════════════════════════════════════════════
+           MOBILE — bộ lọc nằm thẳng trong luồng trang, không drawer
+           ════════════════════════════════════════════════════════════ */
+        @media (max-width: 768px) {
+            .topbar { padding: 0 14px; height: 50px; }
+            .topbar-logo { font-size: 14px; }
+            .topbar-subtitle { display: none; }
+
+            /* Chuyển layout từ 2 cột sang 1 cột dọc */
+            .page {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr;
+                height: auto;
+                overflow: visible;
+                padding-bottom: 60px; /* chừa chỗ bottom nav */
+            }
+
+            /* Sidebar nằm thẳng trên trang, không còn là cột cố định */
+            .sidebar {
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+                overflow-y: visible;
+                /* Ẩn tab switcher desktop trong sidebar */
+            }
+            .sidebar-tabs-desktop { display: none !important; }
+
+            /* Main cuộn tự nhiên */
+            .main { padding: 14px; gap: 14px; overflow: visible; height: auto; }
+
+            /* Các phần bộ lọc trong sidebar: layout ngang compact trên mobile */
+            #sidebar-monitor {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 0;
+            }
+            #sidebar-monitor .sidebar-section {
+                border-bottom: none;
+                border-right: 1px solid var(--border);
+            }
+            #sidebar-monitor .sidebar-section:last-child,
+            #sidebar-monitor .sidebar-section:nth-last-child(1) { border-right: none; }
+
+            /* Ánh xạ: bộ lọc 2 cột đơn giản */
+            #sidebar-mapping {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 0;
+            }
+            #sidebar-mapping .sidebar-section {
+                border-bottom: none;
+                border-right: 1px solid var(--border);
+            }
+            #sidebar-mapping .sidebar-section:last-child { border-right: none; }
+
+            /* Tag checkboxes: cho phép mở rộng tự nhiên trên mobile */
+            .tag-checks { max-height: 100px; }
+
+            /* Nội dung chính */
+            .gauge-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+            .gauge-value { font-size: 20px; }
+            .chart-wrap { height: 240px; }
+            .mapping-grid { grid-template-columns: 1fr; }
+            .card-body { padding: 12px; }
+            .card-header { padding: 10px 14px; }
+
+            /* Bottom nav: chỉ 2 nút Giám sát / Ánh xạ */
+            .bottom-nav {
+                display: flex;
+                position: fixed;
+                bottom: 0; left: 0; right: 0;
+                height: 60px;
+                background: var(--surface);
+                border-top: 1px solid var(--border);
+                z-index: 100;
+            }
+            .bottom-nav-btn {
+                flex: 1; display: flex; flex-direction: column;
+                align-items: center; justify-content: center; gap: 3px;
+                background: transparent; border: none; color: var(--text-3);
+                font-size: 10px; font-weight: 500; font-family: var(--font); cursor: pointer;
+                transition: color .15s;
+            }
+            .bottom-nav-btn svg { width: 20px; height: 20px; }
+            .bottom-nav-btn.active { color: var(--accent); }
         }
     </style>
 </head>
 <body>
-
-<div id="sidebar-overlay" onclick="closeMobileSidebar()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:190;"></div>
 
 <header class="topbar">
     <div class="topbar-logo">
@@ -357,15 +329,18 @@
 
 <div class="page">
 
+    <!-- Sidebar: desktop = cột trái cố định | mobile = bộ lọc inline trên trang -->
     <aside class="sidebar" id="sidebar">
 
-        <div class="sidebar-section">
+        <!-- Tab switcher: chỉ hiển thị trên desktop -->
+        <div class="sidebar-section sidebar-tabs-desktop">
             <div class="tabs">
                 <button class="tab-btn active" onclick="switchTab('monitor')">Giám sát</button>
                 <button class="tab-btn" onclick="switchTab('mapping')">Ánh xạ</button>
             </div>
         </div>
 
+        <!-- Bộ lọc Giám sát -->
         <div id="sidebar-monitor">
             <div class="sidebar-section">
                 <p class="section-label">Trạm giám sát</p>
@@ -377,7 +352,7 @@
 
             <div class="sidebar-section">
                 <p class="section-label">Khoảng thời gian</p>
-                <div class="date-row" style="margin-bottom:8px;">
+                <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:8px;">
                     <div>
                         <label class="field-label">Từ ngày</label>
                         <input type="datetime-local" id="from_date">
@@ -397,13 +372,14 @@
             </div>
 
             <div class="sidebar-section">
-                <button class="btn btn-primary" onclick="queryChartAndGaugeData()">
+                <button class="btn btn-primary" onclick="queryChartAndGaugeData();">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                     Làm mới dữ liệu
                 </button>
             </div>
         </div>
 
+        <!-- Bộ lọc Ánh xạ -->
         <div id="sidebar-mapping" style="display:none;">
             <div class="sidebar-section">
                 <p class="section-label">Trạm đích</p>
@@ -423,10 +399,10 @@
 
     </aside>
 
+    <!-- Main content -->
     <main class="main">
 
         <div id="panel-monitor" class="tab-panel active">
-
             <div class="card" id="gauge_card">
                 <div class="card-header">
                     <div>
@@ -455,12 +431,10 @@
                     </div>
                 </div>
             </div>
-
         </div>
 
         <div id="panel-mapping" class="tab-panel">
             <div class="mapping-grid">
-
                 <div class="card">
                     <div class="card-header">
                         <div>
@@ -496,49 +470,72 @@
                         </button>
                     </div>
                 </div>
-
             </div>
         </div>
 
     </main>
 </div>
 
+<!-- Bottom nav: chỉ hiển thị trên mobile, chỉ 2 nút -->
+<nav class="bottom-nav" id="bottom-nav">
+    <button class="bottom-nav-btn active" id="bnav-monitor" onclick="mobileTab('monitor')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        Giám sát
+    </button>
+    <button class="bottom-nav-btn" id="bnav-mapping" onclick="mobileTab('mapping')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        Ánh xạ
+    </button>
+</nav>
+
 <script>
-    // Cấu hình trục nhận dữ liệu REST API
     // const API_BASE_URL = "http://localhost:3000";
     const API_BASE_URL = "https://iot-central-api.onrender.com";
 
     let helpersCache = null;
     let chartInstance = null;
     let currentChartRawData = null;
+    let currentActiveTab = 'monitor';
 
-    // ── Khởi tạo ────────────────────────────────────────────────────────────
+    // ── Init ──────────────────────────────────────────────────────────
     window.onload = async function () {
-        // 🔥 FIX TRIỆT ĐỂ LỆCH GIỜ Ô CHỌN: Tính toán bù trừ timezoneOffset cục bộ tại Việt Nam
         const now = new Date();
         const yesterday = new Date(Date.now() - 24 * 3600 * 1000);
-        
-        const offsetMs = now.getTimezoneOffset() * 60000;
-        const localNowISO = new Date(now.getTime() - offsetMs).toISOString().slice(0, 16);
-        const localYesterdayISO = new Date(yesterday.getTime() - offsetMs).toISOString().slice(0, 16);
-
-        document.getElementById('to_date').value = localNowISO;
-        document.getElementById('from_date').value = localYesterdayISO;
-        
+        document.getElementById('to_date').value = now.toISOString().slice(0, 16);
+        document.getElementById('from_date').value = yesterday.toISOString().slice(0, 16);
         await fetchInitialHelpers();
         initEmptyChart();
     };
 
-    // ── Chuyển đổi Menu điều hướng ───────────────────────────────────────
+    // ── Tab switching: Desktop (sidebar tabs) & Mobile (bottom nav) ──
+    // Cả hai đều gọi hàm này — logic chuyển panel giống nhau
     function switchTab(tab) {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.textContent.trim() === (tab === 'monitor' ? 'Giám sát' : 'Ánh xạ')));
+        currentActiveTab = tab;
+
+        // Sidebar tab buttons (chỉ desktop thấy)
+        document.querySelectorAll('.tab-btn').forEach(b =>
+            b.classList.toggle('active', b.textContent.trim() === (tab === 'monitor' ? 'Giám sát' : 'Ánh xạ'))
+        );
+
+        // Bottom nav buttons (chỉ mobile thấy)
+        const bm = document.getElementById('bnav-monitor');
+        const ba = document.getElementById('bnav-mapping');
+        if (bm) bm.classList.toggle('active', tab === 'monitor');
+        if (ba) ba.classList.toggle('active', tab === 'mapping');
+
+        // Panel chính
         document.getElementById('panel-monitor').classList.toggle('active', tab === 'monitor');
         document.getElementById('panel-mapping').classList.toggle('active', tab === 'mapping');
+
+        // Bộ lọc trong sidebar (inline trên mobile, cột trái trên desktop)
         document.getElementById('sidebar-monitor').style.display = tab === 'monitor' ? '' : 'none';
         document.getElementById('sidebar-mapping').style.display = tab === 'mapping' ? '' : 'none';
     }
 
-    // ── Tải dữ liệu Helpers đổ vào Dropdown ──────────────────────────────
+    // Mobile bottom nav gọi cùng switchTab — không cần hàm riêng
+    function mobileTab(tab) { switchTab(tab); }
+
+    // ── Helpers ───────────────────────────────────────────────────────
     async function fetchInitialHelpers() {
         try {
             const res = await fetch(`${API_BASE_URL}/api/mappings/helpers`);
@@ -552,13 +549,10 @@
 
             mainSel.innerHTML = '<option value="">Chọn trạm giám sát...</option>';
             tgtSel.innerHTML  = '<option value="">Chọn trạm đích...</option>';
-
             json.target_stations.forEach(s => {
                 const o = `<option value="${s.station_id}">${s.display_name}</option>`;
-                mainSel.innerHTML += o;
-                tgtSel.innerHTML  += o;
+                mainSel.innerHTML += o; tgtSel.innerHTML += o;
             });
-
             if (savedMain) mainSel.value = savedMain;
             if (savedTgt)  tgtSel.value  = savedTgt;
 
@@ -569,34 +563,26 @@
                 srcSel.innerHTML += `<option value="${id}">${id}</option>`;
             });
             if (savedSrc) srcSel.value = savedSrc;
-
-        } catch (e) { console.error('Lỗi tải dropdown helpers:', e); }
+        } catch (e) { console.error('Lỗi tải helpers:', e); }
     }
 
-    // ── Tải danh sách tag hiện tại của trạm đích ──────────────────────────
     async function loadTargetStationTags() {
         const stationId = document.getElementById('target_station_id').value;
         const container = document.getElementById('target_tags_container');
         const deleteBtn = document.getElementById('btn_delete_mapped');
-
         if (!stationId) {
             container.innerHTML = '<div class="state-empty">Chọn trạm đích để kiểm tra thẻ tag</div>';
-            deleteBtn.style.display = 'none';
-            return;
+            deleteBtn.style.display = 'none'; return;
         }
-
         try {
             const res  = await fetch(`${API_BASE_URL}/api/mappings/station-tags/${stationId}`);
             const json = await res.json();
             container.innerHTML = '';
             let hasMapped = false;
-
             if (!json.tags || json.tags.length === 0) {
                 container.innerHTML = '<div class="state-empty">Trạm chưa có thẻ tag nào</div>';
-                deleteBtn.style.display = 'none';
-                return;
+                deleteBtn.style.display = 'none'; return;
             }
-
             json.tags.forEach(t => {
                 if (!t.is_native) hasMapped = true;
                 const originLabel = t.is_native ? '' : `<span class="tag-origin">← ${t.origin_info}</span>`;
@@ -604,8 +590,7 @@
                     <div class="tag-row">
                         <div class="tag-row-left">
                             <span class="pill ${t.is_native ? 'pill-native' : 'pill-mapped'}">${t.is_native ? 'native' : 'mapped'}</span>
-                            <span class="tag-key">${t.tag_key}</span>
-                            ${originLabel}
+                            <span class="tag-key">${t.tag_key}</span>${originLabel}
                         </div>
                         ${t.is_native ? '' : `<input type="checkbox" class="chk-target-delete" value="${t.tag_key}">`}
                     </div>`;
@@ -614,27 +599,20 @@
         } catch (e) { console.error('Lỗi tải tags trạm đích:', e); }
     }
 
-    // ── Tải danh sách tag vật lý của trạm nguồn ──────────────────────────
     function loadSourceStationTags() {
         const srcId     = document.getElementById('source_logger_id').value;
         const container = document.getElementById('source_tags_container');
         const addBtn    = document.getElementById('btn_add_mapped');
-
         if (!srcId || !helpersCache) {
             container.innerHTML = '<div class="state-empty">Chọn trạm nguồn để xem tag</div>';
-            addBtn.style.display = 'none';
-            return;
+            addBtn.style.display = 'none'; return;
         }
-
         const tags = helpersCache.source_stations[srcId] || [];
         container.innerHTML = '';
-
         if (tags.length === 0) {
             container.innerHTML = '<div class="state-empty">Không tìm thấy tag nào</div>';
-            addBtn.style.display = 'none';
-            return;
+            addBtn.style.display = 'none'; return;
         }
-
         tags.forEach(tag => {
             container.innerHTML += `
                 <div class="tag-row">
@@ -648,36 +626,26 @@
         addBtn.style.display = 'block';
     }
 
-    // ── Tạo liên kết ánh xạ ảo mới ───────────────────────────────────────
     async function addSelectedTagsToTarget() {
         const targetId = document.getElementById('target_station_id').value;
         const sourceId = document.getElementById('source_logger_id').value;
         const checked  = document.querySelectorAll('.chk-source-add:checked');
-
-        if (!targetId || checked.length === 0) {
-            alert('Chọn trạm đích và ít nhất 1 tag nguồn để tiếp tục.');
-            return;
-        }
+        if (!targetId || checked.length === 0) { alert('Chọn trạm đích và ít nhất 1 tag nguồn.'); return; }
         try {
             for (const box of checked) {
                 await fetch(`${API_BASE_URL}/api/mappings`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ target_station_id: targetId, source_logger_id: sourceId, tag_key: box.value })
                 });
             }
-            await fetchInitialHelpers();
-            await loadTargetStationTags();
-            loadSourceStationTags();
-        } catch (e) { console.error('Lỗi lưu cấu hình ánh xạ:', e); }
+            await fetchInitialHelpers(); await loadTargetStationTags(); loadSourceStationTags();
+        } catch (e) { console.error('Lỗi thêm ánh xạ:', e); }
     }
 
-    // ── Xóa bỏ liên kết ánh xạ ảo ────────────────────────────────────────
     async function deleteSelectedMappings() {
         const targetId = document.getElementById('target_station_id').value;
         const checked  = document.querySelectorAll('.chk-target-delete:checked');
         if (checked.length === 0 || !confirm(`Xóa ${checked.length} liên kết ánh xạ đã chọn?`)) return;
-
         try {
             for (const box of checked) {
                 const match = helpersCache.active_mappings.find(m =>
@@ -685,26 +653,18 @@
                 );
                 if (match) await fetch(`${API_BASE_URL}/api/mappings/${match.id}`, { method: 'DELETE' });
             }
-            await fetchInitialHelpers();
-            loadTargetStationTags();
-        } catch (e) { console.error('Lỗi hủy bỏ ánh xạ:', e); }
+            await fetchInitialHelpers(); loadTargetStationTags();
+        } catch (e) { console.error('Lỗi xóa ánh xạ:', e); }
     }
 
-    // ── Đổi trạm giám sát trên Sidebar ───────────────────────────────────
     async function onStationChange() {
         const stationId = document.getElementById('station_selector').value;
         const wrapper   = document.getElementById('tag_checkbox_wrapper');
-
-        if (!stationId) {
-            wrapper.innerHTML = '<div class="state-empty">Chọn trạm để lọc tag</div>';
-            return;
-        }
-
+        if (!stationId) { wrapper.innerHTML = '<div class="state-empty">Chọn trạm để lọc tag</div>'; return; }
         try {
             const res  = await fetch(`${API_BASE_URL}/api/mappings/station-tags/${stationId}`);
             const json = await res.json();
             wrapper.innerHTML = '';
-
             if (json.tags && json.tags.length > 0) {
                 json.tags.forEach(t => {
                     wrapper.innerHTML += `
@@ -717,25 +677,20 @@
             } else {
                 wrapper.innerHTML = '<div class="state-empty" style="color:var(--red);">Trạm không có thẻ tag nào</div>';
             }
-        } catch (e) { console.error('Lỗi tải danh sách bộ lọc tag:', e); }
+        } catch (e) { console.error('Lỗi tải tag filter:', e); }
     }
 
-    // ── Khởi tạo khung biểu đồ Chart.js trống ───────────────────────────
     function initEmptyChart() {
         const ctx = document.getElementById('iotHistoryChart').getContext('2d');
         Chart.defaults.color = '#8b949e';
         Chart.defaults.borderColor = '#30363d';
         chartInstance = new Chart(ctx, {
-            type: 'line',
-            data: { datasets: [] },
+            type: 'line', data: { datasets: [] },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
+                responsive: true, maintainAspectRatio: false,
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
-                    legend: {
-                        labels: { font: { family: "'JetBrains Mono', monospace", size: 11 }, padding: 16, boxWidth: 10, boxHeight: 2 }
-                    },
+                    legend: { labels: { font: { family: "'JetBrains Mono', monospace", size: 11 }, padding: 16, boxWidth: 10, boxHeight: 2 } },
                     tooltip: {
                         backgroundColor: '#1c2128', borderColor: '#30363d', borderWidth: 1,
                         titleColor: '#e6edf3', bodyColor: '#8b949e',
@@ -746,14 +701,12 @@
                 },
                 scales: {
                     x: {
-                        type: 'time',
-                        time: { unit: 'hour', displayFormats: { hour: 'HH:mm dd/MM' } },
+                        type: 'time', time: { unit: 'hour', displayFormats: { hour: 'HH:mm dd/MM' } },
                         grid: { color: '#21262d' },
                         ticks: { font: { family: "'JetBrains Mono', monospace", size: 10 }, maxTicksLimit: 8 }
                     },
                     y: {
-                        beginAtZero: true,
-                        grid: { color: '#21262d' },
+                        beginAtZero: true, grid: { color: '#21262d' },
                         ticks: { font: { family: "'JetBrains Mono', monospace", size: 10 } }
                     }
                 }
@@ -761,37 +714,31 @@
         });
     }
 
-    // ── Truy vấn nạp đồng thời dữ liệu tức thời và lịch sử ──────────────
     async function queryChartAndGaugeData() {
         const stationId = document.getElementById('station_selector').value;
         if (!stationId) return;
-
         const fromDate = document.getElementById('from_date').value;
         const toDate   = document.getElementById('to_date').value;
         const dot      = document.getElementById('gauge_status_dot');
-
         document.getElementById('gauge_card').classList.add('loading');
         document.getElementById('chart_card').classList.add('loading');
         dot.className = 'status-dot idle';
 
-        // 📊 ĐỒNG BỘ 1: Xử lý khối hiển thị Gauge giá trị tức thời
         try {
             const res  = await fetch(`${API_BASE_URL}/api/logger/gauge/${stationId}`);
             const json = await res.json();
             const wrap = document.getElementById('gauge_wrapper');
             document.getElementById('gauge_station_name').textContent = json.display_name || stationId;
             wrap.innerHTML = '';
-
             if (json.success && json.gauges && Object.keys(json.gauges).length > 0) {
                 const colors = ['#2f81f7','#3fb950','#d29922','#f85149','#a371f7','#79c0ff','#56d364'];
                 let ci = 0;
                 Object.keys(json.gauges).forEach(tag => {
                     const g = json.gauges[tag];
-                    let pct = 0;
-                    if (g.max > g.min) pct = Math.min(100, Math.max(0, ((g.current_value - g.min) / (g.max - g.min)) * 100));
+                    const pct = g.max > g.min ? Math.min(100, Math.max(0, ((g.current_value - g.min) / (g.max - g.min)) * 100)) : 0;
                     const color = colors[ci++ % colors.length];
                     wrap.innerHTML += `
-                        <div class="gauge-tile" style="--tile-color:${color};">
+                        <div class="gauge-tile">
                             <div class="gauge-key">${tag}</div>
                             <div class="gauge-value" style="color:${color};">${g.current_value !== null ? g.current_value : '—'}</div>
                             <div class="gauge-unit">${g.unit || ''}</div>
@@ -803,96 +750,44 @@
             } else {
                 wrap.innerHTML = '<div class="state-empty" style="grid-column:1/-1;">Không có dữ liệu tức thời</div>';
             }
-        } catch (e) { console.error('Lỗi nạp thông số Gauge:', e); }
+        } catch (e) { console.error('Lỗi gauge:', e); }
         finally { document.getElementById('gauge_card').classList.remove('loading'); }
 
-        // 📊 ĐỒNG BỘ 2: Xử lý khối dựng Biểu đồ lịch sử
         try {
             let url = `${API_BASE_URL}/api/logger/history?station_id=${stationId}`;
             if (fromDate) url += `&from_date=${new Date(fromDate).toISOString()}`;
             if (toDate)   url += `&to_date=${new Date(toDate).toISOString()}`;
-
             const res  = await fetch(url);
             const json = await res.json();
-
             if (fromDate && toDate) {
-                const f = new Date(fromDate), t = new Date(toDate);
                 document.getElementById('chart_range_label').textContent =
-                    `${f.toLocaleString('vi-VN')} → ${t.toLocaleString('vi-VN')}`;
+                    `${new Date(fromDate).toLocaleString('vi-VN')} → ${new Date(toDate).toLocaleString('vi-VN')}`;
             }
-
-            if (json.success && json.chart_data) {
-                currentChartRawData = json.chart_data;
-                renderChartDatasetsOnly();
-            }
-        } catch (e) { console.error('Lỗi dựng đồ thị lịch sử:', e); }
+            if (json.success && json.chart_data) { currentChartRawData = json.chart_data; renderChartDatasetsOnly(); }
+        } catch (e) { console.error('Lỗi history:', e); }
         finally { document.getElementById('chart_card').classList.remove('loading'); }
     }
 
-    // ── Lọc và vẽ các Dataset được Checkbox đánh dấu lên Chart ──────────
     function renderChartDatasetsOnly() {
         if (!currentChartRawData || !chartInstance) return;
-
         const checked  = Array.from(document.querySelectorAll('.chk-tag-filter:checked')).map(cb => cb.value);
         const palette  = ['#2f81f7','#3fb950','#d29922','#f85149','#a371f7','#79c0ff','#56d364'];
         const datasets = [];
         let ci = 0;
-
         Object.keys(currentChartRawData).forEach(key => {
             if (!checked.includes(key)) return;
             const pts   = (currentChartRawData[key] || []).map(p => ({ x: new Date(p.x), y: p.y }));
             const color = palette[ci++ % palette.length];
             datasets.push({
-                label: key.toUpperCase(),
-                data: pts,
-                borderColor: color,
-                backgroundColor: color + '18',
-                borderWidth: 1.5,
-                tension: 0.3,
-                pointRadius: pts.length > 60 ? 0 : 2,
-                pointHoverRadius: 4
+                label: key.toUpperCase(), data: pts,
+                borderColor: color, backgroundColor: color + '18',
+                borderWidth: 1.5, tension: 0.3,
+                pointRadius: pts.length > 60 ? 0 : 2, pointHoverRadius: 4
             });
         });
-
         chartInstance.data.datasets = datasets;
         chartInstance.update();
     }
-</script>
-
-<nav class="bottom-nav" id="bottom-nav">
-    <button class="bottom-nav-btn active" id="bnav-monitor" onclick="mobileTab('monitor')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
-        Giám sát
-    </button>
-    <button class="bottom-nav-btn" id="bnav-mapping" onclick="mobileTab('mapping')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-        Ánh xạ
-    </button>
-    <button class="bottom-nav-btn" id="bnav-filter" onclick="toggleMobileSidebar()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
-        Bộ lọc
-    </button>
-</nav>
-
-<script>
-function mobileTab(tab) {
-    if (window.innerWidth > 768) return;
-    document.getElementById('panel-monitor').classList.toggle('active', tab==='monitor');
-    document.getElementById('panel-mapping').classList.toggle('active', tab==='mapping');
-    document.getElementById('bnav-monitor').classList.toggle('active', tab==='monitor');
-    document.getElementById('bnav-mapping').classList.toggle('active', tab==='mapping');
-    document.getElementById('bnav-filter').classList.remove('active');
-    closeMobileSidebar();
-}
-function toggleMobileSidebar() {
-    const sb = document.getElementById('sidebar');
-    const btn = document.getElementById('bnav-filter');
-    const isOpen = sb.classList.toggle('open');
-    btn.classList.toggle('active', isOpen);
-}
-function closeMobileSidebar() {
-    document.getElementById('sidebar').classList.remove('open');
-}
 </script>
 </body>
 </html>

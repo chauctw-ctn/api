@@ -38,7 +38,14 @@ function normalizeNumber(value) {
   const asNumber = Number(cleaned); return Number.isNaN(asNumber) ? null : asNumber;
 }
 
-// 🛠️ TỐI ƯU: Khớp bóc tách chuỗi thời gian Web thô chuyển thành đối tượng Date nguyên bản (:00)
+// 🛠️ FIX TIMEZONE: Trả về thời gian hiện tại đúng múi giờ UTC+7, không phụ thuộc TZ hệ thống
+function nowVN() {
+  return new Date(Date.now() + 7 * 60 * 60 * 1000);
+}
+
+// 🛠️ FIX: Bóc tách chuỗi thời gian Web thô → Date object nhất quán với MONRE
+// Không gắn +07:00 vào ISO string (sẽ bị JS convert về UTC thực), thay vào đó
+// tính epoch UTC rồi cộng thêm 7h offset để giờ VN nằm trong UTC field (giống nowVN)
 function parseUpdateTimeToDateRounded(value) {
   if (!value) return null;
   const cleaned = String(value).trim();
@@ -46,30 +53,29 @@ function parseUpdateTimeToDateRounded(value) {
   if (!match) return null;
   
   const [, day, month, year, hours = 0, minutes = 0] = match;
-  const pad = (v) => String(v).padStart(2, "0");
   
-  // Tạo chuỗi định dạng ISO chuẩn có gắn đuôi +07:00 của Việt Nam
-  const isoString = `${year}-${pad(month)}-${pad(day)}T${pad(hours)}:${pad(minutes)}:00+07:00`;
-  return new Date(isoString);
+  // Tạo epoch UTC từ các thành phần (coi như UTC gốc), rồi cộng 7h offset
+  // để giờ VN (ví dụ 14:30 VN) nằm trong UTC field của Date object — nhất quán với nowVN()
+  const OFFSET_MS = 7 * 60 * 60 * 1000;
+  const baseUtcMs = Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes), 0);
+  const date = new Date(baseUtcMs + OFFSET_MS);
+  if (Number.isNaN(date.getTime())) return null;
+  return date;
 }
 
-// 🛠️ TỐI ƯU: Trả về Object Date hệ thống làm tròn giây về :00
+// 🛠️ FIX: Thời gian hệ thống VN, làm tròn giây về :00
 function getSystemDateRounded() {
-  const now = new Date();
-  now.setSeconds(0, 0);
-  now.setMilliseconds(0);
-  return now;
+  const vn = nowVN();
+  vn.setUTCSeconds(0, 0);
+  return vn;
 }
 
-// 🛠️ TỐI ƯU: Trả về Object Date phân chu kỳ 5 phút
+// 🛠️ FIX: Thời gian hệ thống VN, làm tròn xuống mốc 5 phút gần nhất
 function getRounded5MinDate() {
-  const now = new Date(); 
-  now.setSeconds(0, 0);
-  now.setMilliseconds(0);
-  const minutes = now.getMinutes(); 
-  const roundedMinutes = Math.floor(minutes / 5) * 5;
-  now.setMinutes(roundedMinutes);
-  return now;
+  const vn = nowVN();
+  vn.setUTCSeconds(0, 0);
+  vn.setUTCMinutes(Math.floor(vn.getUTCMinutes() / 5) * 5);
+  return vn;
 }
 
 function normalizeStationId(name) {

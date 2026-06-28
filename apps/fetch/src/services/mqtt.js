@@ -27,28 +27,49 @@ function normalizeMetricValue(value) {
   return Number.isNaN(numericValue) ? null : numericValue;
 }
 
-// 🛠️ TỐI ƯU MÚI GIỜ: Kiểm tra cấu trúc chuỗi, tự động xử lý timezone
-function parseTimestampToDate(ts) {
-  if (!ts) return null;
-  let tsStr = String(ts).trim();
-  
-  if (!tsStr.includes("Z") && !tsStr.match(/[+-]\d{2}:?\d{2}$/)) {
-    tsStr += "+07:00";
-  }
-  
-  const parsed = new Date(tsStr);
-  if (Number.isNaN(parsed.getTime())) return null;
-  
-  parsed.setSeconds(0, 0);
-  parsed.setMilliseconds(0);
-  return parsed;
+// 🛠️ FIX TIMEZONE: Trả về thời gian hiện tại đúng múi giờ UTC+7, không phụ thuộc TZ hệ thống
+function nowVN() {
+  return new Date(Date.now() + 7 * 60 * 60 * 1000);
 }
 
+// 🛠️ FIX TIMEZONE: Parse timestamp string từ thiết bị — giả định luôn là giờ VN (UTC+7)
+// Không gắn timezone suffix, thay vào đó parse thô rồi cộng offset 7h vào epoch (giống MONRE)
+function parseTimestampToDate(ts) {
+  if (!ts) return null;
+  const tsStr = String(ts).trim();
+
+  // Thử parse trực tiếp (nếu thiết bị gửi epoch ms hoặc ISO với TZ)
+  let epochMs = Number(tsStr);
+  if (!Number.isNaN(epochMs) && epochMs > 1e12) {
+    // epoch milliseconds từ thiết bị — coi như giờ địa phương VN, cộng offset 7h
+    const OFFSET_MS = 7 * 60 * 60 * 1000;
+    const date = new Date(epochMs + OFFSET_MS);
+    if (Number.isNaN(date.getTime())) return null;
+    date.setUTCSeconds(0, 0);
+    return date;
+  }
+
+  // Chuỗi datetime dạng "YYYY-MM-DD HH:mm:ss" hoặc "YYYY-MM-DDTHH:mm:ss" (không TZ)
+  // Tách tay các thành phần để tránh JS tự gán UTC hay local timezone
+  // Thiết bị gửi giờ VN → cộng thêm 7h offset để UTC field của Date object = giờ VN (giống nowVN)
+  const match = tsStr.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (match) {
+    const [, year, month, day, hours, minutes, seconds = 0] = match;
+    const OFFSET_MS = 7 * 60 * 60 * 1000;
+    const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes), Number(seconds)) + OFFSET_MS);
+    if (Number.isNaN(date.getTime())) return null;
+    date.setUTCSeconds(0, 0);
+    return date;
+  }
+
+  return null;
+}
+
+// 🛠️ FIX: Thời gian hệ thống VN, làm tròn giây về :00
 function getSystemDateRounded() {
-  const now = new Date();
-  now.setSeconds(0, 0);
-  now.setMilliseconds(0);
-  return now;
+  const vn = nowVN();
+  vn.setUTCSeconds(0, 0);
+  return vn;
 }
 
 function parsePayloadTextSecure(text) {
@@ -112,7 +133,7 @@ setInterval(async () => {
         mqttHistoryQueue.push({ 
           logger_id: stationId, 
           tag_key: parameter, 
-          data_ts: formattedDataTs.toISOString(), 
+          data_ts: formattedDataTs,
           value: parsedValue 
         });
 
@@ -137,19 +158,20 @@ setInterval(async () => {
   const cachedItems = [...mqttHistoryQueue];
   mqttHistoryQueue = [];
   
-  const now = new Date();
-  now.setSeconds(0, 0);
-  now.setMilliseconds(0);
-  const minutes = now.getMinutes();
-  now.setMinutes(Math.floor(minutes / 5) * 5);
-  const serverSavedTs = now;
+  // 🛠️ FIX: Dùng nowVN() để tránh lệch 7 giờ
+  const serverSavedTs = (() => {
+    const vn = nowVN();
+    vn.setUTCSeconds(0, 0);
+    vn.setUTCMinutes(Math.floor(vn.getUTCMinutes() / 5) * 5);
+    return vn;
+  })();
 
   const client = await db.connect();
   try {
     await client.query("BEGIN");
     const insertText = `INSERT INTO logger_readings (logger_id, tag_key, data_ts, data_save, value) VALUES ($1, $2, $3, $4, $5)`;
     for (const item of cachedItems) {
-      const finalDataTs = item.data_ts ? new Date(item.data_ts) : serverSavedTs;
+      const finalDataTs = item.data_ts instanceof Date ? item.data_ts : serverSavedTs;
       await client.query(insertText, [item.logger_id, item.tag_key, finalDataTs, serverSavedTs, item.value]);
     }
     await client.query("COMMIT");

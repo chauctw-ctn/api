@@ -76,29 +76,32 @@ function getCleanPermitNumber(projectName) {
 // 🛠️ TỐI ƯU: Hàm parse và làm tròn giây về 00 trả về một đối tượng Date chuẩn cho TIMESTAMPTZ
 function parseTimestampToDateRounded(ts) {
     if (!ts) return null;
-    const date = new Date(Number(ts));
+    // ArcGIS MONRE trả epoch milliseconds theo giờ địa phương (UTC+7), không phải UTC chuẩn
+    // → Phải cộng thêm 7h (25200000ms) để bù lại khi new Date() interpret sai thành UTC
+    const OFFSET_MS = 7 * 60 * 60 * 1000;
+    const date = new Date(Number(ts) + OFFSET_MS);
     if (Number.isNaN(date.getTime())) return null;
-    date.setSeconds(0, 0);
-    date.setMilliseconds(0);
+    date.setUTCSeconds(0, 0);
     return date;
 }
 
-// 🛠️ TỐI ƯU: Hàm lấy thời gian hiện tại của hệ thống làm tròn giây về 00 dưới dạng Date
+// 🛠️ current_ts: thời gian hệ thống Node.js → cộng offset +7h vì server chạy UTC
+function nowVN() {
+    return new Date(Date.now() + 7 * 60 * 60 * 1000);
+}
+
 function getSystemDateRounded() {
-    const now = new Date();
-    now.setSeconds(0, 0);
-    now.setMilliseconds(0);
-    return now;
+    const vn = nowVN();
+    vn.setUTCSeconds(0, 0);
+    return vn;
 }
 
 // 🛠️ TỐI ƯU: Hàm lấy thời gian làm tròn chu kỳ 5 phút trả về Date
 function getRounded5MinDate() {
-    const now = new Date();
-    now.setSeconds(0, 0);
-    now.setMilliseconds(0);
-    const minutes = now.getMinutes();
-    now.setMinutes(Math.floor(minutes / 5) * 5);
-    return now;
+    const vn = nowVN();
+    vn.setUTCSeconds(0, 0);
+    vn.setUTCMinutes(Math.floor(vn.getUTCMinutes() / 5) * 5);
+    return vn;
 }
 
 function normalizeMetricValue(value) {

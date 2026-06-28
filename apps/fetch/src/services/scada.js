@@ -66,12 +66,16 @@ async function loginScada(config) {
   return { client, sessionCookie };
 }
 
-// 🛠️ TỐI ƯU MÚI GIỜ: Khởi tạo đối tượng thời gian chuẩn, xóa phần giây để đồng bộ
+// 🛠️ FIX TIMEZONE: Trả về thời gian hiện tại đúng múi giờ UTC+7, không phụ thuộc TZ hệ thống
+function nowVN() {
+  return new Date(Date.now() + 7 * 60 * 60 * 1000);
+}
+
+// 🛠️ FIX: Thời gian hệ thống VN, làm tròn giây về :00
 function getVietnamTimeRounded() {
-  const now = new Date();
-  now.setSeconds(0, 0);
-  now.setMilliseconds(0);
-  return now;
+  const vn = nowVN();
+  vn.setUTCSeconds(0, 0);
+  return vn;
 }
 
 async function fetchScadaData() {
@@ -109,7 +113,7 @@ async function fetchScadaData() {
       scadaHistoryQueue.push({ 
         logger_id: stationId, 
         tag_key: parameter, 
-        data_ts: currentFetchTs.toISOString(), 
+        data_ts: currentFetchTs,
         value: parsedValue 
       });
 
@@ -135,19 +139,20 @@ setInterval(async () => {
   const cachedItems = [...scadaHistoryQueue]; 
   scadaHistoryQueue = [];
   
-  const now = new Date();
-  now.setSeconds(0, 0);
-  now.setMilliseconds(0);
-  const minutes = now.getMinutes();
-  now.setMinutes(Math.floor(minutes / 5) * 5);
-  const serverSavedTs = now;
+  // 🛠️ FIX: Dùng nowVN() để tránh lệch 7 giờ
+  const serverSavedTs = (() => {
+    const vn = nowVN();
+    vn.setUTCSeconds(0, 0);
+    vn.setUTCMinutes(Math.floor(vn.getUTCMinutes() / 5) * 5);
+    return vn;
+  })();
 
   const client = await db.connect();
   try {
     await client.query("BEGIN");
     const insertText = `INSERT INTO logger_readings (logger_id, tag_key, data_ts, data_save, value) VALUES ($1, $2, $3, $4, $5)`;
     for (const item of cachedItems) { 
-      const finalDataTs = item.data_ts ? new Date(item.data_ts) : serverSavedTs;
+      const finalDataTs = item.data_ts instanceof Date ? item.data_ts : serverSavedTs;
       await client.query(insertText, [item.logger_id, item.tag_key, finalDataTs, serverSavedTs, item.value]); 
     }
     await client.query("COMMIT");
